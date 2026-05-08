@@ -7,6 +7,7 @@ export class ParseResultsModal extends Modal {
   constructor(app: App, customAutoCorrectionInfo: CustomAutoCorrectContent) {
     super(app);
     this.modalEl.addClass('confirm-modal');
+    this.modalEl.addClass('linter-frank-modal');
 
     this.contentEl.createEl('h3', {text: getTextInLanguage('parse-results-heading-text'), cls: 'modal-heading'});
 
@@ -33,4 +34,3 @@ export class ParseResultsModal extends Modal {
     });
   }
 }
-

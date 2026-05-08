@@ -27,6 +27,7 @@ export class SettingTab extends PluginSettingTab {
     const {containerEl} = this;
 
     containerEl.empty();
+    containerEl.addClass('linter-frank-settings');
     const linterHeader = containerEl.createDiv('linter-setting-title');
     if (Platform.isMobile) {
       linterHeader.addClass('linter-mobile');

@@ -7,6 +7,7 @@ export class ConfirmRuleDisableModal extends Modal {
   constructor(app: App, ruleBeingEnabledName: LanguageStringKey, ruleBeingDisabledName: LanguageStringKey, btnSubmitAction: () => void, btnCancelAction: () => void) {
     super(app);
     this.modalEl.addClass('confirm-modal');
+    this.modalEl.addClass('linter-frank-modal');
 
     this.contentEl.createEl('h3', {text: getTextInLanguage('warning-text'), cls: 'modal-heading'});
 

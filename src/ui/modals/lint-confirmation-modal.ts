@@ -8,6 +8,7 @@ export class LintConfirmationModal extends Modal {
       saveSuppressPreference?: () => Promise<void>) {
     super(app);
     this.modalEl.addClass('confirm-modal');
+    this.modalEl.addClass('linter-frank-modal');
 
     this.contentEl.createEl('h3', {text: getTextInLanguage('warning-text'), cls: 'modal-heading'});
 
