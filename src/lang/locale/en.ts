@@ -9,6 +9,9 @@ export default {
     'lint-file-unless-ignored': {
       'name': 'Lint the current file unless ignored',
     },
+    'format-personal-obsidian-note': {
+      'name': 'Format current note with personal Obsidian formatter',
+    },
     'lint-all-files': {
       'name': 'Lint all files in the vault',
       'error-message': 'Lint All Files Error in File',
@@ -593,6 +596,11 @@ export default {
     'paragraph-blank-lines': {
       'name': 'Paragraph blank lines',
       'description': 'All paragraphs should have exactly one blank line both before and after.',
+    },
+    // personal-obsidian-formatter.ts
+    'personal-obsidian-formatter': {
+      'name': 'Personal Obsidian formatter',
+      'description': 'Formats Obsidian Markdown notes into a compact layout while preserving Obsidian rendering behavior and custom syntax structures.',
     },
     // prevent-double-checklist-indicator-on-paste.ts
     'prevent-double-checklist-indicator-on-paste': {

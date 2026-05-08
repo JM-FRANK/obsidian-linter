@@ -20,6 +20,7 @@ import {warn} from 'loglevel';
 import {CustomAutoCorrectContent} from './ui/linter-components/auto-correct-files-picker-option';
 import {ChangeSpec} from '@codemirror/state';
 import {downloadMisspellings, readInMisspellingsFile} from './utils/auto-correct-misspellings';
+import {formatPersonalObsidianMarkdown} from './utils/personal-obsidian-formatter';
 
 // https://github.com/liamcain/obsidian-calendar-ui/blob/03ceecbf6d88ef260dadf223ee5e483d98d24ffc/src/localization.ts#L20-L43
 const langToMomentLocale = {
@@ -177,6 +178,19 @@ export default class LinterPlugin extends Plugin {
         if (!that.shouldIgnoreFile(ctx.file) && editor.cm) {
           void that.runLinterEditor(editor);
         }
+      },
+      icon: iconInfo.file.id,
+    });
+
+    this.addCommand({
+      id: 'format-personal-obsidian-note',
+      name: getTextInLanguage('commands.format-personal-obsidian-note.name'),
+      editorCheckCallback(checking, editor, ctx) {
+        if (checking) {
+          return that.isMarkdownFile(ctx.file) && editor.cm != null;
+        }
+
+        void that.runPersonalObsidianFormatterEditor(editor);
       },
       icon: iconInfo.file.id,
     });
@@ -627,6 +641,24 @@ export default class LinterPlugin extends Plugin {
     }
 
     setCollectLogs(false);
+  }
+
+  async runPersonalObsidianFormatterEditor(editor: Editor) {
+    const file = this.app.workspace.getActiveFile();
+    const oldText = editor.getValue();
+    const newText = formatPersonalObsidianMarkdown(oldText);
+    const changes = this.updateEditor(oldText, newText, editor);
+    const charsAdded = changes.map((change) => change[0] == DiffMatchPatch.DIFF_INSERT ? change[1].length : 0).reduce((a, b) => a + b, 0);
+    const charsRemoved = changes.map((change) => change[0] == DiffMatchPatch.DIFF_DELETE ? change[1].length : 0).reduce((a, b) => a + b, 0);
+
+    this.displayChangedMessage(charsAdded, charsRemoved);
+
+    if (!charsAdded && !charsRemoved) {
+      void this.runCustomCommands(file);
+    } else {
+      this.updateFileDebouncerText(file, newText);
+      this.editorLintFiles.push(file);
+    }
   }
 
   // based on https://github.com/liamcain/obsidian-calendar-ui/blob/03ceecbf6d88ef260dadf223ee5e483d98d24ffc/src/localization.ts#L85-L109
