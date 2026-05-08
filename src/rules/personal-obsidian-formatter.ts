@@ -1,9 +1,11 @@
 import {Options, RuleType} from '../rules';
-import RuleBuilder, {ExampleBuilder, OptionBuilderBase} from './rule-builder';
+import RuleBuilder, {BooleanOptionBuilder, ExampleBuilder, OptionBuilderBase} from './rule-builder';
 import dedent from 'ts-dedent';
 import {formatPersonalObsidianMarkdown} from '../utils/personal-obsidian-formatter';
 
-class PersonalObsidianFormatterOptions implements Options {}
+class PersonalObsidianFormatterOptions implements Options {
+  moveMathIntoCallout: boolean = true;
+}
 
 @RuleBuilder.register
 export default class PersonalObsidianFormatter extends RuleBuilder<PersonalObsidianFormatterOptions> {
@@ -20,7 +22,9 @@ export default class PersonalObsidianFormatter extends RuleBuilder<PersonalObsid
   }
 
   apply(text: string, options: PersonalObsidianFormatterOptions): string {
-    return formatPersonalObsidianMarkdown(text);
+    return formatPersonalObsidianMarkdown(text, {
+      moveMathIntoCallout: options.moveMathIntoCallout,
+    });
   }
 
   get exampleBuilders(): ExampleBuilder<PersonalObsidianFormatterOptions>[] {
@@ -57,6 +61,13 @@ export default class PersonalObsidianFormatter extends RuleBuilder<PersonalObsid
     ];
   }
   get optionBuilders(): OptionBuilderBase<PersonalObsidianFormatterOptions>[] {
-    return [];
+    return [
+      new BooleanOptionBuilder({
+        OptionsClass: PersonalObsidianFormatterOptions,
+        nameKey: 'rules.personal-obsidian-formatter.move-math-into-callout.name',
+        descriptionKey: 'rules.personal-obsidian-formatter.move-math-into-callout.description',
+        optionsKey: 'moveMathIntoCallout',
+      }),
+    ];
   }
 }

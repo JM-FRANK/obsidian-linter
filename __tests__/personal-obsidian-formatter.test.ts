@@ -26,11 +26,9 @@ ruleTest({
       `,
       after: dedent`
         # Title
-        ${''}
         Content
         ${''}
         ## Subtitle
-        ${''}
         Content
       ` + '\n',
     },
@@ -144,6 +142,26 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'Block math immediately after callout stays outside callout when disabled',
+      before: dedent`
+        > [!eg] Example title
+        > Content
+        $$
+        x + 1 = y
+        $$
+      `,
+      after: dedent`
+        > [!eg] Example title
+        > Content
+        $$
+        x + 1 = y
+        $$
+      ` + '\n',
+      options: {
+        moveMathIntoCallout: false,
+      },
+    },
+    {
       testName: 'Block math after ordinary text does not move into callout',
       before: dedent`
         > [!eg] Example title
@@ -184,6 +202,39 @@ ruleTest({
         x + 1 = y
         $$
         %%
+      ` + '\n',
+    },
+    {
+      testName: 'Heading block spacing follows the personal one-click strategy',
+      before: dedent`
+        ## 标题1
+        ${''}
+        正文
+        ${''}
+        ${''}
+        ## 标题2
+        ${''}
+        正文
+        ${''}
+        ### 标题3
+        ${''}
+        # 标题4
+        ${''}
+        ## 标题5
+        ${''}
+        正文
+      `,
+      after: dedent`
+        ## 标题1
+        正文
+        ## 标题2
+        正文
+        ${''}
+        ### 标题3
+        ${''}
+        # 标题4
+        ## 标题5
+        正文
       ` + '\n',
     },
   ],

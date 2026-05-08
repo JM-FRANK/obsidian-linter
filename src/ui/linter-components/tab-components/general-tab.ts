@@ -126,6 +126,9 @@ export class GeneralTab extends Tab {
     tempDiv = this.contentEl.createDiv();
     this.addSettingSearchInfoForGeneralSettings(new NumberInputSetting(tempDiv, 'tabs.general.number-of-dollar-signs-to-indicate-math-block.name', 'tabs.general.number-of-dollar-signs-to-indicate-math-block.description', 'commonStyles.minimumNumberOfDollarSignsToBeAMathBlock', this.plugin));
 
+    tempDiv = this.contentEl.createDiv();
+    this.addSettingSearchInfoForGeneralSettings(new ToggleSetting(tempDiv, 'tabs.general.personal-formatter-move-math-into-callout.name', 'tabs.general.personal-formatter-move-math-into-callout.description', 'commonStyles.personalFormatterMoveMathIntoCallout', this.plugin));
+
     const folderIgnoreEl = this.contentEl.createDiv();
     const folderIgnore = new FolderIgnoreOption(folderIgnoreEl, this.plugin.settings.foldersToIgnore, this.app, () => {
       void this.plugin.saveSettings();

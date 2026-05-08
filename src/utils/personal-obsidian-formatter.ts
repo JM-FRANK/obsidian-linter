@@ -6,6 +6,10 @@ type CodeFenceInfo = {
 const calloutStartRegex = /^>\s*\[![^\]]+\]/;
 const codeFenceRegex = /^\s*(`{3,}|~{3,})/;
 
+export type PersonalObsidianFormatterOptions = {
+  moveMathIntoCallout?: boolean;
+};
+
 function linesOf(text: string): string[] {
   return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n+$/g, '').split('\n');
 }
@@ -187,6 +191,79 @@ function compactBlankLines(lines: string[]): string[] {
   return result;
 }
 
+function headingLevel(line: string): number | null {
+  const match = line.match(/^(#{1,6})\s+\S/);
+  return match ? match[1].length : null;
+}
+
+function normalizeHeadingSpacing(lines: string[]): string[] {
+  const codeMask = getCodeFenceMask(lines);
+  const result: string[] = [];
+  let currentContentHeadingLevel: number | null = null;
+  let pendingBlank = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (codeMask[i]) {
+      if (pendingBlank && result.length > 0) {
+        result.push('');
+      }
+
+      result.push(lines[i]);
+      pendingBlank = false;
+      continue;
+    }
+
+    const line = lines[i];
+    const lineHeadingLevel = headingLevel(line);
+
+    if (line.trim() === '') {
+      pendingBlank = true;
+      continue;
+    }
+
+    if (lineHeadingLevel !== null) {
+      const previousLine = result[result.length - 1];
+      const previousHeadingLevel = previousLine ? headingLevel(previousLine) : null;
+      const previousIsHeading = previousHeadingLevel !== null;
+      const previousIsContent = previousLine !== undefined && previousLine.trim() !== '' && !previousIsHeading;
+
+      if (previousIsHeading) {
+        pendingBlank = previousHeadingLevel > lineHeadingLevel;
+      } else if (previousIsContent) {
+        pendingBlank = currentContentHeadingLevel !== null && currentContentHeadingLevel !== lineHeadingLevel;
+      }
+
+      if (pendingBlank && result.length > 0) {
+        result.push('');
+      }
+
+      result.push(line);
+      pendingBlank = false;
+      continue;
+    }
+
+    if (pendingBlank) {
+      const previousLine = result[result.length - 1];
+      if (previousLine !== undefined && previousLine.trim() !== '' && headingLevel(previousLine) === null) {
+        result.push('');
+      }
+    }
+
+    result.push(line);
+    pendingBlank = false;
+
+    for (let j = result.length - 2; j >= 0; j--) {
+      const previousHeadingLevel = headingLevel(result[j]);
+      if (previousHeadingLevel !== null) {
+        currentContentHeadingLevel = previousHeadingLevel;
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+
 function hasUnescapedPipe(line: string): boolean {
   let inRuby = false;
 
@@ -299,12 +376,15 @@ function trimTrailingWhitespaceOutsideCode(lines: string[]): string[] {
   return lines.map((line, index) => codeMask[index] ? line : line.replace(/[ \t]+$/g, ''));
 }
 
-export function formatPersonalObsidianMarkdown(text: string): string {
+export function formatPersonalObsidianMarkdown(text: string, options: PersonalObsidianFormatterOptions = {}): string {
   let lines = linesOf(text);
 
   lines = normalizeBlockMath(lines);
-  lines = moveFollowingMathIntoCallout(lines);
+  if (options.moveMathIntoCallout ?? true) {
+    lines = moveFollowingMathIntoCallout(lines);
+  }
   lines = compactBlankLines(lines);
+  lines = normalizeHeadingSpacing(lines);
   lines = ensureTableSpacing(lines);
   lines = ensureAdjacentCalloutSpacing(lines);
   lines = trimTrailingWhitespaceOutsideCode(lines);

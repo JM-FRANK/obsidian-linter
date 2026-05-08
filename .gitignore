@@ -43,3 +43,9 @@ yarn.lock
 !/.eslintrc.js
 !babel.config.js
 !postcss.config.js
+test-vault/6、吉田さんは来月中国へ行きます.md
+test-vault/Calc_L3、洛必达、泰勒麦克劳林展开、积分方法.md
+test-vault/personal-formatter-baselines/6、吉田さんは来月中国へ行きます.formatted.md
+test-vault/personal-formatter-baselines/6、吉田さんは来月中国へ行きます.original.md
+test-vault/personal-formatter-baselines/Calc_L3、洛必达、泰勒麦克劳林展开、积分方法.formatted.md
+test-vault/personal-formatter-baselines/Calc_L3、洛必达、泰勒麦克劳林展开、积分方法.original.md

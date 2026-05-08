@@ -12,6 +12,7 @@ export type CommonStyles = {
   minimumNumberOfDollarSignsToBeAMathBlock: number;
   escapeCharacter: QuoteCharacter;
   removeUnnecessaryEscapeCharsForMultiLineArrays: boolean;
+  personalFormatterMoveMathIntoCallout: boolean;
 }
 
 export enum AfterFileChangeLintTimes {
@@ -72,5 +73,6 @@ export const DEFAULT_SETTINGS: Partial<LinterSettings> = {
     minimumNumberOfDollarSignsToBeAMathBlock: 2,
     escapeCharacter: '"',
     removeUnnecessaryEscapeCharsForMultiLineArrays: false,
+    personalFormatterMoveMathIntoCallout: true,
   },
 };

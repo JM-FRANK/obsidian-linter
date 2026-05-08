@@ -646,7 +646,9 @@ export default class LinterPlugin extends Plugin {
   async runPersonalObsidianFormatterEditor(editor: Editor) {
     const file = this.app.workspace.getActiveFile();
     const oldText = editor.getValue();
-    const newText = formatPersonalObsidianMarkdown(oldText);
+    const newText = formatPersonalObsidianMarkdown(oldText, {
+      moveMathIntoCallout: this.settings.commonStyles.personalFormatterMoveMathIntoCallout ?? true,
+    });
     const changes = this.updateEditor(oldText, newText, editor);
     const charsAdded = changes.map((change) => change[0] == DiffMatchPatch.DIFF_INSERT ? change[1].length : 0).reduce((a, b) => a + b, 0);
     const charsRemoved = changes.map((change) => change[0] == DiffMatchPatch.DIFF_DELETE ? change[1].length : 0).reduce((a, b) => a + b, 0);
@@ -698,6 +700,13 @@ export default class LinterPlugin extends Plugin {
 
       delete this.settings['lintOnFileContentChangeDelay'];
       updateMade = true;
+    }
+
+    for (const key of Object.keys(DEFAULT_SETTINGS.commonStyles)) {
+      if (!Object.hasOwn(this.settings.commonStyles, key)) {
+        this.settings.commonStyles[key] = DEFAULT_SETTINGS.commonStyles[key];
+        updateMade = true;
+      }
     }
 
     // move the setting of typo rule name to its new name

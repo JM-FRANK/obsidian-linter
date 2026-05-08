@@ -227,6 +227,10 @@ export default {
         'name': 'Number of dollar signs to indicate math block',
         'description': 'The amount of dollar signs to consider the math content to be a math block instead of inline math',
       },
+      'personal-formatter-move-math-into-callout': {
+        'name': 'Personal formatter: move following math into callouts',
+        'description': 'When using the personal one-click formatter, immediately following block math is moved into the preceding Obsidian callout.',
+      },
     },
     'debug': {
       // debug-tab.ts
@@ -601,6 +605,10 @@ export default {
     'personal-obsidian-formatter': {
       'name': 'Personal Obsidian formatter',
       'description': 'Formats Obsidian Markdown notes into a compact layout while preserving Obsidian rendering behavior and custom syntax structures.',
+      'move-math-into-callout': {
+        'name': 'Move following math into callouts',
+        'description': 'Immediately following block math is moved into the preceding Obsidian callout when enabled.',
+      },
     },
     // prevent-double-checklist-indicator-on-paste.ts
     'prevent-double-checklist-indicator-on-paste': {
