@@ -1,4 +1,4 @@
-import {App, Editor, EventRef, MarkdownView, Menu, Notice, Plugin, TAbstractFile, TFile, TFolder, addIcon, htmlToMarkdown, EditorSelection, EditorChange, normalizePath, MarkdownFileInfo, debounce, Debouncer, getLanguage} from 'obsidian';
+import {App, Editor, EventRef, MarkdownView, Menu, Notice, Plugin, TAbstractFile, TFile, TFolder, WorkspaceLeaf, addIcon, htmlToMarkdown, EditorSelection, EditorChange, normalizePath, MarkdownFileInfo, debounce, Debouncer, getLanguage} from 'obsidian';
 import {Options, RuleType, ruleTypeToRules, rules, sortRules} from './rules';
 import DiffMatchPatch from 'diff-match-patch';
 import dedent from 'ts-dedent';
@@ -21,6 +21,7 @@ import {CustomAutoCorrectContent} from './ui/linter-components/auto-correct-file
 import {ChangeSpec} from '@codemirror/state';
 import {downloadMisspellings, readInMisspellingsFile} from './utils/auto-correct-misspellings';
 import {formatPersonalObsidianMarkdown} from './utils/personal-obsidian-formatter';
+import {DiffPreviewView, diffPreviewViewType} from './ui/views/diff-preview-view';
 
 // https://github.com/liamcain/obsidian-calendar-ui/blob/03ceecbf6d88ef260dadf223ee5e483d98d24ffc/src/localization.ts#L20-L43
 const langToMomentLocale = {
@@ -98,6 +99,9 @@ export default class LinterPlugin extends Plugin {
 
     await this.loadSettings();
 
+    this.registerView(diffPreviewViewType, (leaf) => new DiffPreviewView(leaf));
+    this.updateDiffPreviewViewStatus();
+
     this.addCommands();
 
     this.registerEventsAndSaveCallback();
@@ -130,6 +134,9 @@ export default class LinterPlugin extends Plugin {
     if (typeof this.settings.suppressMessageWhenNoChange !== 'boolean') {
       this.settings.suppressMessageWhenNoChange = false;
     }
+    if (typeof this.settings.enableDiffPreviewView !== 'boolean') {
+      this.settings.enableDiffPreviewView = true;
+    }
     if (typeof this.settings.logLevel === 'number') {
       this.settings.logLevel = convertNumberToLogLevel(this.settings.logLevel);
     }
@@ -139,6 +146,13 @@ export default class LinterPlugin extends Plugin {
 
     this.updatePasteOverrideStatus();
     this.updateHasCustomCommandStatus();
+    this.updateDiffPreviewViewStatus();
+  }
+
+  updateDiffPreviewViewStatus() {
+    if (!this.settings.enableDiffPreviewView) {
+      this.app.workspace.detachLeavesOfType(diffPreviewViewType);
+    }
   }
 
   async saveSettings() {
@@ -150,6 +164,7 @@ export default class LinterPlugin extends Plugin {
 
     this.updatePasteOverrideStatus();
     this.updateHasCustomCommandStatus();
+    this.updateDiffPreviewViewStatus();
   }
 
   addCommands() {
@@ -183,6 +198,19 @@ export default class LinterPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'preview-lint-file',
+      name: getTextInLanguage('commands.preview-lint-file.name'),
+      editorCheckCallback(checking, editor, ctx) {
+        if (checking) {
+          return that.settings.enableDiffPreviewView && that.isMarkdownFile(ctx.file) && editor.cm != null;
+        }
+
+        void that.previewLinterEditor(editor);
+      },
+      icon: iconInfo.file.id,
+    });
+
+    this.addCommand({
       id: 'format-personal-obsidian-note',
       name: getTextInLanguage('commands.format-personal-obsidian-note.name'),
       editorCheckCallback(checking, editor, ctx) {
@@ -191,6 +219,19 @@ export default class LinterPlugin extends Plugin {
         }
 
         void that.runPersonalObsidianFormatterEditor(editor);
+      },
+      icon: iconInfo.file.id,
+    });
+
+    this.addCommand({
+      id: 'preview-personal-obsidian-note-format',
+      name: getTextInLanguage('commands.preview-personal-obsidian-note-format.name'),
+      editorCheckCallback(checking, editor, ctx) {
+        if (checking) {
+          return that.settings.enableDiffPreviewView && that.isMarkdownFile(ctx.file) && editor.cm != null;
+        }
+
+        void that.previewPersonalObsidianFormatterEditor(editor);
       },
       icon: iconInfo.file.id,
     });
@@ -626,20 +667,29 @@ export default class LinterPlugin extends Plugin {
       return;
     }
 
-    const changes = this.updateEditor(oldText, newText, editor);
-    const charsAdded = changes.map((change) => change[0] == DiffMatchPatch.DIFF_INSERT ? change[1].length : 0).reduce((a, b) => a + b, 0);
-    const charsRemoved = changes.map((change) => change[0] == DiffMatchPatch.DIFF_DELETE ? change[1].length : 0).reduce((a, b) => a + b, 0);
+    this.applyEditorTextChange(oldText, newText, editor, file);
 
-    this.displayChangedMessage(charsAdded, charsRemoved);
+    setCollectLogs(false);
+  }
 
-    // run custom commands now since no change was made
-    if (!charsAdded && !charsRemoved) {
-      void this.runCustomCommands(file);
-    } else {
-      this.updateFileDebouncerText(file, newText);
-      this.editorLintFiles.push(file);
+  async previewLinterEditor(editor: Editor) {
+    setCollectLogs(this.settings.recordLintOnSaveLogs);
+    clearLogs();
+
+    logInfo(getTextInLanguage('logs.linter-run'));
+
+    const file = this.app.workspace.getActiveFile();
+    const oldText = editor.getValue();
+    let newText: string;
+    try {
+      newText = this.rulesRunner.lintText(createRunLinterRulesOptions(oldText, file, this.momentLocale, this.settings, this.defaultAutoCorrectMisspellings));
+    } catch (error) {
+      this.handleLintError(file, error, getTextInLanguage('commands.lint-file.error-message') + ' \'{FILE_PATH}\'', false);
+      setCollectLogs(false);
+      return;
     }
 
+    void this.openDiffPreview(getTextInLanguage('notice-text.lint-preview-title'), oldText, newText, editor, file);
     setCollectLogs(false);
   }
 
@@ -649,6 +699,38 @@ export default class LinterPlugin extends Plugin {
     const newText = formatPersonalObsidianMarkdown(oldText, {
       moveMathIntoCallout: this.settings.commonStyles.personalFormatterMoveMathIntoCallout ?? true,
     });
+    this.applyEditorTextChange(oldText, newText, editor, file);
+  }
+
+  async previewPersonalObsidianFormatterEditor(editor: Editor) {
+    const file = this.app.workspace.getActiveFile();
+    const oldText = editor.getValue();
+    const newText = formatPersonalObsidianMarkdown(oldText, {
+      moveMathIntoCallout: this.settings.commonStyles.personalFormatterMoveMathIntoCallout ?? true,
+    });
+
+    void this.openDiffPreview(getTextInLanguage('notice-text.personal-formatter-preview-title'), oldText, newText, editor, file);
+  }
+
+  private async openDiffPreview(title: string, oldText: string, newText: string, editor: Editor, file: TFile) {
+    if (!this.settings.enableDiffPreviewView) {
+      return;
+    }
+
+    const leaf = await this.getDiffPreviewLeaf();
+    const view = leaf.view as DiffPreviewView;
+    view.setPreview({
+      title,
+      oldText,
+      newText,
+      applyAction: () => {
+        this.applyEditorTextChange(oldText, newText, editor, file);
+      },
+    });
+    await this.app.workspace.revealLeaf(leaf);
+  }
+
+  private applyEditorTextChange(oldText: string, newText: string, editor: Editor, file: TFile) {
     const changes = this.updateEditor(oldText, newText, editor);
     const charsAdded = changes.map((change) => change[0] == DiffMatchPatch.DIFF_INSERT ? change[1].length : 0).reduce((a, b) => a + b, 0);
     const charsRemoved = changes.map((change) => change[0] == DiffMatchPatch.DIFF_DELETE ? change[1].length : 0).reduce((a, b) => a + b, 0);
@@ -661,6 +743,16 @@ export default class LinterPlugin extends Plugin {
       this.updateFileDebouncerText(file, newText);
       this.editorLintFiles.push(file);
     }
+  }
+
+  private async getDiffPreviewLeaf(): Promise<WorkspaceLeaf> {
+    let leaf = this.app.workspace.getLeavesOfType(diffPreviewViewType)[0];
+    if (!leaf) {
+      leaf = this.app.workspace.getRightLeaf(false) ?? this.app.workspace.getLeaf('split');
+      await leaf.setViewState({type: diffPreviewViewType, active: true});
+    }
+
+    return leaf;
   }
 
   // based on https://github.com/liamcain/obsidian-calendar-ui/blob/03ceecbf6d88ef260dadf223ee5e483d98d24ffc/src/localization.ts#L85-L109
