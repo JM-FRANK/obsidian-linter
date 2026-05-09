@@ -5,6 +5,8 @@ type CodeFenceInfo = {
 
 const calloutStartRegex = /^>\s*\[![^\]]+\]/;
 const codeFenceRegex = /^\s*(`{3,}|~{3,})/;
+const closingPunctuationRegex = /^[,.;:!?，。！？；：、）)\]}》」』】]/;
+const openingPunctuationRegex = /^[(（[{《「『【]/;
 
 export type PersonalObsidianFormatterOptions = {
   moveMathIntoCallout?: boolean;
@@ -54,6 +56,40 @@ function normalizeEquationSpacing(text: string): string {
   return text.replace(/\s*=\s*/g, ' = ').replace(/[ \t]{2,}/g, ' ').trim();
 }
 
+function splitLatexEnvironmentBoundaries(line: string): string[] {
+  return line.replace(/\s*(\\(?:begin|end)\{[^}]+\})\s*/g, '\n$1\n')
+      .split('\n')
+      .map((part) => part.trim())
+      .filter((part) => part !== '');
+}
+
+function splitSingleMathFenceLine(line: string): string[] {
+  const firstFenceIndex = line.indexOf('$$');
+  if (firstFenceIndex === -1 || line.indexOf('$$', firstFenceIndex + 2) !== -1) {
+    return [line];
+  }
+
+  const beforeFence = line.slice(0, firstFenceIndex).trimEnd();
+  const afterFence = line.slice(firstFenceIndex + 2).trimStart();
+  if (/^(>\s*)+$/.test(beforeFence) && afterFence === '') {
+    return [line];
+  }
+
+  const result: string[] = [];
+
+  if (beforeFence.trim() !== '') {
+    result.push(beforeFence);
+  }
+
+  result.push('$$');
+
+  if (afterFence.trim() !== '') {
+    result.push(afterFence);
+  }
+
+  return result;
+}
+
 function normalizeMathBlockContent(content: string[]): string[] {
   const trimmedContent = content.map((line) => line.trim()).filter((line) => line !== '');
   if (trimmedContent.length === 0) {
@@ -64,13 +100,29 @@ function normalizeMathBlockContent(content: string[]): string[] {
   const hasLatexLineBreaks = trimmedContent.some((line) => line.includes('\\\\'));
 
   if (hasLatexEnvironment || hasLatexLineBreaks) {
-    return trimmedContent.flatMap((line) => line.replace(/\\\\\s+(?=\S)/g, '\\\\\n').split('\n').map((part) => part.trim()));
+    return trimmedContent.flatMap((line) => {
+      return line.replace(/\\\\\s+(?=\S)/g, '\\\\\n')
+          .split('\n')
+          .flatMap((part) => splitLatexEnvironmentBoundaries(part));
+    });
   }
 
   return [normalizeEquationSpacing(trimmedContent.join(' '))];
 }
 
+function mathFencePrefix(line: string): string | null {
+  const match = line.match(/^((?:>\s*)*)\$\$\s*$/);
+  if (!match) {
+    return null;
+  }
+
+  const quoteDepth = match[1].match(/>/g)?.length ?? 0;
+  return quoteDepth === 0 ? '' : `${'> '.repeat(quoteDepth)}`;
+}
+
 function normalizeBlockMath(lines: string[]): string[] {
+  const originalCodeMask = getCodeFenceMask(lines);
+  lines = lines.flatMap((line, index) => originalCodeMask[index] ? [line] : splitSingleMathFenceLine(line));
   const codeMask = getCodeFenceMask(lines);
   const result: string[] = [];
 
@@ -78,25 +130,30 @@ function normalizeBlockMath(lines: string[]): string[] {
     const trimmedLine = lines[i].trim();
 
     if (!codeMask[i] && trimmedLine.startsWith('$$') && trimmedLine.endsWith('$$') && trimmedLine.length > 4) {
-      result.push('$$', ...normalizeMathBlockContent([trimmedLine.slice(2, -2)]), '$$');
+      result.push(lines[i]);
       continue;
     }
 
-    if (!codeMask[i] && trimmedLine === '$$') {
+    const currentMathFencePrefix = codeMask[i] ? null : mathFencePrefix(lines[i]);
+    if (currentMathFencePrefix !== null) {
       const content: string[] = [];
       let endIndex = -1;
 
       for (let j = i + 1; j < lines.length; j++) {
-        if (!codeMask[j] && lines[j].trim() === '$$') {
+        if (!codeMask[j] && mathFencePrefix(lines[j]) === currentMathFencePrefix) {
           endIndex = j;
           break;
         }
 
-        content.push(lines[j]);
+        content.push(currentMathFencePrefix === '' ? lines[j] : stripBlockquotePrefixes(lines[j]));
       }
 
       if (endIndex !== -1) {
-        result.push('$$', ...normalizeMathBlockContent(content), '$$');
+        result.push(
+            `${currentMathFencePrefix}$$`,
+            ...normalizeMathBlockContent(content).map((line) => `${currentMathFencePrefix}${line}`),
+            `${currentMathFencePrefix}$$`,
+        );
         i = endIndex;
         continue;
       }
@@ -108,8 +165,156 @@ function normalizeBlockMath(lines: string[]): string[] {
   return result;
 }
 
+function isEscaped(text: string, index: number): boolean {
+  let backslashCount = 0;
+  for (let i = index - 1; i >= 0 && text[i] === '\\'; i--) {
+    backslashCount++;
+  }
+
+  return backslashCount % 2 === 1;
+}
+
+function findInlineMathEnd(line: string, startIndex: number): number {
+  for (let i = startIndex + 1; i < line.length; i++) {
+    if (line[i] === '$' && line[i + 1] !== '$' && !isEscaped(line, i)) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+function shouldAddSpaceBeforeInlineMath(text: string): boolean {
+  if (text === '') {
+    return false;
+  }
+
+  const previousChar = text[text.length - 1];
+  return !/\s/.test(previousChar) && !openingPunctuationRegex.test(previousChar);
+}
+
+function shouldAddSpaceAfterInlineMath(line: string, nextIndex: number): boolean {
+  if (nextIndex >= line.length) {
+    return false;
+  }
+
+  const nextChar = line[nextIndex];
+  return !/\s/.test(nextChar) && !closingPunctuationRegex.test(nextChar);
+}
+
+function normalizeInlineMathSpacingInLine(line: string): string {
+  let result = '';
+
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '$' && line[i + 1] === '$') {
+      result += '$$';
+      i++;
+      continue;
+    }
+
+    if (line[i] !== '$' || isEscaped(line, i)) {
+      result += line[i];
+      continue;
+    }
+
+    const endIndex = findInlineMathEnd(line, i);
+    if (endIndex === -1) {
+      result += line.slice(i);
+      break;
+    }
+
+    if (shouldAddSpaceBeforeInlineMath(result)) {
+      result += ' ';
+    }
+
+    result += line.slice(i, endIndex + 1);
+
+    if (shouldAddSpaceAfterInlineMath(line, endIndex + 1)) {
+      result += ' ';
+    }
+
+    i = endIndex;
+  }
+
+  return result;
+}
+
+function getMathBlockMask(lines: string[]): boolean[] {
+  const mask = new Array(lines.length).fill(false);
+  let inMathBlock = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (mathFencePrefix(lines[i]) !== null) {
+      inMathBlock = !inMathBlock;
+      mask[i] = true;
+      continue;
+    }
+
+    mask[i] = inMathBlock;
+  }
+
+  return mask;
+}
+
+function normalizeInlineMathSpacing(lines: string[]): string[] {
+  const codeMask = getCodeFenceMask(lines);
+  const mathBlockMask = getMathBlockMask(lines);
+
+  return lines.map((line, index) => {
+    if (codeMask[index] || mathBlockMask[index]) {
+      return line;
+    }
+
+    return normalizeInlineMathSpacingInLine(line);
+  });
+}
+
 function isPlainMathFence(line: string): boolean {
   return line.trim() === '$$';
+}
+
+function stripBlockquotePrefixes(line: string): string {
+  return line.replace(/^(>\s*)+/, '');
+}
+
+function moveMathLineIntoCallout(line: string): string {
+  return `> ${stripBlockquotePrefixes(line)}`;
+}
+
+function findPlainMathBlockEnd(lines: string[], codeMask: boolean[], startIndex: number): number {
+  if (startIndex >= lines.length || codeMask[startIndex] || !isPlainMathFence(lines[startIndex])) {
+    return -1;
+  }
+
+  for (let i = startIndex + 1; i < lines.length; i++) {
+    if (codeMask[i]) {
+      return -1;
+    }
+
+    if (isPlainMathFence(lines[i])) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+function findMathBlockEndAtPrefix(lines: string[], codeMask: boolean[], startIndex: number, prefix: string): number {
+  if (startIndex >= lines.length || codeMask[startIndex] || mathFencePrefix(lines[startIndex]) !== prefix) {
+    return -1;
+  }
+
+  for (let i = startIndex + 1; i < lines.length; i++) {
+    if (codeMask[i]) {
+      return -1;
+    }
+
+    if (mathFencePrefix(lines[i]) === prefix) {
+      return i;
+    }
+  }
+
+  return -1;
 }
 
 function moveFollowingMathIntoCallout(lines: string[]): string[] {
@@ -129,32 +334,38 @@ function moveFollowingMathIntoCallout(lines: string[]): string[] {
       j++;
     }
 
-    let mathStart = j;
-    while (mathStart < lines.length && !codeMask[mathStart] && lines[mathStart].trim() === '') {
-      mathStart++;
+    const calloutWithMathLines = [...calloutLines];
+    let nextIndex = j;
+    let movedMath = false;
+
+    while (nextIndex < lines.length && !codeMask[nextIndex]) {
+      while (nextIndex < lines.length && !codeMask[nextIndex] && lines[nextIndex].startsWith('>') && !calloutStartRegex.test(lines[nextIndex])) {
+        calloutWithMathLines.push(lines[nextIndex]);
+        nextIndex++;
+      }
+
+      let mathStart = nextIndex;
+      while (mathStart < lines.length && !codeMask[mathStart] && lines[mathStart].trim() === '') {
+        mathStart++;
+      }
+
+      const mathEnd = findPlainMathBlockEnd(lines, codeMask, mathStart);
+      if (mathEnd === -1) {
+        break;
+      }
+
+      for (let k = mathStart; k <= mathEnd; k++) {
+        calloutWithMathLines.push(moveMathLineIntoCallout(lines[k]));
+      }
+
+      movedMath = true;
+      nextIndex = mathEnd + 1;
     }
 
-    if (mathStart < lines.length && !codeMask[mathStart] && isPlainMathFence(lines[mathStart])) {
-      const mathLines: string[] = [];
-      let mathEnd = -1;
-
-      for (let k = mathStart; k < lines.length; k++) {
-        if (codeMask[k]) {
-          break;
-        }
-
-        mathLines.push(lines[k]);
-        if (k > mathStart && isPlainMathFence(lines[k])) {
-          mathEnd = k;
-          break;
-        }
-      }
-
-      if (mathEnd !== -1) {
-        result.push(...calloutLines, ...mathLines.map((line) => `> ${line}`));
-        i = mathEnd;
-        continue;
-      }
+    if (movedMath) {
+      result.push(...calloutWithMathLines);
+      i = nextIndex - 1;
+      continue;
     }
 
     result.push(...calloutLines);
@@ -162,6 +373,61 @@ function moveFollowingMathIntoCallout(lines: string[]): string[] {
   }
 
   return result;
+}
+
+function isBlockquoteLineAtDepth(line: string, depth: number): boolean {
+  return (line.match(/>/g)?.length ?? 0) >= depth;
+}
+
+function moveMathOutOfCallouts(lines: string[]): string[] {
+  const codeMask = getCodeFenceMask(lines);
+  const result: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    if (codeMask[i] || !calloutStartRegex.test(lines[i])) {
+      result.push(lines[i]);
+      continue;
+    }
+
+    const calloutDepth = lines[i].match(/>/g)?.length ?? 1;
+    result.push(lines[i]);
+
+    for (let j = i + 1; j < lines.length; j++) {
+      if (codeMask[j] || calloutStartRegex.test(lines[j]) || !isBlockquoteLineAtDepth(lines[j], calloutDepth)) {
+        i = j - 1;
+        break;
+      }
+
+      if (mathFencePrefix(lines[j]) === `${'> '.repeat(calloutDepth)}`) {
+        const mathEnd = findMathBlockEndAtPrefix(lines, codeMask, j, `${'> '.repeat(calloutDepth)}`);
+        if (mathEnd !== -1) {
+          for (let k = j; k <= mathEnd; k++) {
+            result.push(stripBlockquotePrefixes(lines[k]));
+          }
+          i = mathEnd;
+          j = mathEnd;
+          continue;
+        }
+      }
+
+      result.push(lines[j]);
+      i = j;
+    }
+  }
+
+  return result;
+}
+
+function removeEmptyBlockquoteLines(lines: string[]): string[] {
+  const codeMask = getCodeFenceMask(lines);
+
+  return lines.filter((line, index) => {
+    if (codeMask[index]) {
+      return true;
+    }
+
+    return !/^(>\s*)+$/.test(line.trim());
+  });
 }
 
 function compactBlankLines(lines: string[]): string[] {
@@ -380,9 +646,13 @@ export function formatPersonalObsidianMarkdown(text: string, options: PersonalOb
   let lines = linesOf(text);
 
   lines = normalizeBlockMath(lines);
+  lines = normalizeInlineMathSpacing(lines);
   if (options.moveMathIntoCallout ?? true) {
     lines = moveFollowingMathIntoCallout(lines);
+  } else {
+    lines = moveMathOutOfCallouts(lines);
   }
+  lines = removeEmptyBlockquoteLines(lines);
   lines = compactBlankLines(lines);
   lines = normalizeHeadingSpacing(lines);
   lines = ensureTableSpacing(lines);

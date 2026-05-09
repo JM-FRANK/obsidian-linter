@@ -58,6 +58,11 @@ type FileChangeUpdateInfo = {
   markdownInfo: MarkdownView | MarkdownFileInfo
 }
 
+type ActiveMarkdownEditorInfo = {
+  editor: Editor;
+  file: TFile;
+};
+
 export default class LinterPlugin extends Plugin {
   settings: LinterSettings;
   settingsTab: SettingTab;
@@ -167,17 +172,34 @@ export default class LinterPlugin extends Plugin {
     this.updateDiffPreviewViewStatus();
   }
 
+  private getActiveMarkdownEditorInfo(): ActiveMarkdownEditorInfo | null {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!view?.file || !this.isMarkdownFile(view.file) || view.editor.cm == null) {
+      return null;
+    }
+
+    return {
+      editor: view.editor,
+      file: view.file,
+    };
+  }
+
   addCommands() {
     const that = this;
     this.addCommand({
       id: 'lint-file',
       name: getTextInLanguage('commands.lint-file.name'),
-      editorCheckCallback(checking, editor, ctx) {
-        if (checking) {
-          return that.isMarkdownFile(ctx.file) && editor.cm != null;
+      checkCallback(checking) {
+        const activeMarkdownEditorInfo = that.getActiveMarkdownEditorInfo();
+        if (!activeMarkdownEditorInfo) {
+          return false;
         }
 
-        void that.runLinterEditor(editor);
+        if (!checking) {
+          void that.runLinterEditor(activeMarkdownEditorInfo.editor, activeMarkdownEditorInfo.file);
+        }
+
+        return true;
       },
       icon: iconInfo.file.id,
     });
@@ -185,14 +207,17 @@ export default class LinterPlugin extends Plugin {
     this.addCommand({
       id: 'lint-file-unless-ignored',
       name: getTextInLanguage('commands.lint-file-unless-ignored.name'),
-      editorCheckCallback(checking, editor, ctx) {
-        if (checking) {
-          return that.isMarkdownFile(ctx.file);
+      checkCallback(checking) {
+        const activeMarkdownEditorInfo = that.getActiveMarkdownEditorInfo();
+        if (!activeMarkdownEditorInfo) {
+          return false;
         }
 
-        if (!that.shouldIgnoreFile(ctx.file) && editor.cm) {
-          void that.runLinterEditor(editor);
+        if (!checking && !that.shouldIgnoreFile(activeMarkdownEditorInfo.file)) {
+          void that.runLinterEditor(activeMarkdownEditorInfo.editor, activeMarkdownEditorInfo.file);
         }
+
+        return true;
       },
       icon: iconInfo.file.id,
     });
@@ -200,12 +225,17 @@ export default class LinterPlugin extends Plugin {
     this.addCommand({
       id: 'preview-lint-file',
       name: getTextInLanguage('commands.preview-lint-file.name'),
-      editorCheckCallback(checking, editor, ctx) {
-        if (checking) {
-          return that.settings.enableDiffPreviewView && that.isMarkdownFile(ctx.file) && editor.cm != null;
+      checkCallback(checking) {
+        const activeMarkdownEditorInfo = that.getActiveMarkdownEditorInfo();
+        if (!that.settings.enableDiffPreviewView || !activeMarkdownEditorInfo) {
+          return false;
         }
 
-        void that.previewLinterEditor(editor);
+        if (!checking) {
+          void that.previewLinterEditor(activeMarkdownEditorInfo.editor, activeMarkdownEditorInfo.file);
+        }
+
+        return true;
       },
       icon: iconInfo.file.id,
     });
@@ -213,12 +243,17 @@ export default class LinterPlugin extends Plugin {
     this.addCommand({
       id: 'format-personal-obsidian-note',
       name: getTextInLanguage('commands.format-personal-obsidian-note.name'),
-      editorCheckCallback(checking, editor, ctx) {
-        if (checking) {
-          return that.isMarkdownFile(ctx.file) && editor.cm != null;
+      checkCallback(checking) {
+        const activeMarkdownEditorInfo = that.getActiveMarkdownEditorInfo();
+        if (!activeMarkdownEditorInfo) {
+          return false;
         }
 
-        void that.runPersonalObsidianFormatterEditor(editor);
+        if (!checking) {
+          void that.runPersonalObsidianFormatterEditor(activeMarkdownEditorInfo.editor, activeMarkdownEditorInfo.file);
+        }
+
+        return true;
       },
       icon: iconInfo.file.id,
     });
@@ -226,12 +261,17 @@ export default class LinterPlugin extends Plugin {
     this.addCommand({
       id: 'preview-personal-obsidian-note-format',
       name: getTextInLanguage('commands.preview-personal-obsidian-note-format.name'),
-      editorCheckCallback(checking, editor, ctx) {
-        if (checking) {
-          return that.settings.enableDiffPreviewView && that.isMarkdownFile(ctx.file) && editor.cm != null;
+      checkCallback(checking) {
+        const activeMarkdownEditorInfo = that.getActiveMarkdownEditorInfo();
+        if (!that.settings.enableDiffPreviewView || !activeMarkdownEditorInfo) {
+          return false;
         }
 
-        void that.previewPersonalObsidianFormatterEditor(editor);
+        if (!checking) {
+          void that.previewPersonalObsidianFormatterEditor(activeMarkdownEditorInfo.editor, activeMarkdownEditorInfo.file);
+        }
+
+        return true;
       },
       icon: iconInfo.file.id,
     });
@@ -651,13 +691,12 @@ export default class LinterPlugin extends Plugin {
     }).open();
   }
 
-  async runLinterEditor(editor: Editor) {
+  async runLinterEditor(editor: Editor, file: TFile = this.app.workspace.getActiveFile()) {
     setCollectLogs(this.settings.recordLintOnSaveLogs);
     clearLogs();
 
     logInfo(getTextInLanguage('logs.linter-run'));
 
-    const file = this.app.workspace.getActiveFile();
     const oldText = editor.getValue();
     let newText: string;
     try {
@@ -672,13 +711,12 @@ export default class LinterPlugin extends Plugin {
     setCollectLogs(false);
   }
 
-  async previewLinterEditor(editor: Editor) {
+  async previewLinterEditor(editor: Editor, file: TFile = this.app.workspace.getActiveFile()) {
     setCollectLogs(this.settings.recordLintOnSaveLogs);
     clearLogs();
 
     logInfo(getTextInLanguage('logs.linter-run'));
 
-    const file = this.app.workspace.getActiveFile();
     const oldText = editor.getValue();
     let newText: string;
     try {
@@ -693,8 +731,7 @@ export default class LinterPlugin extends Plugin {
     setCollectLogs(false);
   }
 
-  async runPersonalObsidianFormatterEditor(editor: Editor) {
-    const file = this.app.workspace.getActiveFile();
+  async runPersonalObsidianFormatterEditor(editor: Editor, file: TFile = this.app.workspace.getActiveFile()) {
     const oldText = editor.getValue();
     const newText = formatPersonalObsidianMarkdown(oldText, {
       moveMathIntoCallout: this.settings.commonStyles.personalFormatterMoveMathIntoCallout ?? true,
@@ -702,8 +739,7 @@ export default class LinterPlugin extends Plugin {
     this.applyEditorTextChange(oldText, newText, editor, file);
   }
 
-  async previewPersonalObsidianFormatterEditor(editor: Editor) {
-    const file = this.app.workspace.getActiveFile();
+  async previewPersonalObsidianFormatterEditor(editor: Editor, file: TFile = this.app.workspace.getActiveFile()) {
     const oldText = editor.getValue();
     const newText = formatPersonalObsidianMarkdown(oldText, {
       moveMathIntoCallout: this.settings.commonStyles.personalFormatterMoveMathIntoCallout ?? true,
