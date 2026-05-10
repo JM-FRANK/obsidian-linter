@@ -373,8 +373,18 @@ function mathFencePrefix(line: string): string | null {
 
 function normalizeBlockMath(lines: string[], context: FormatContext): string[] {
   const originalCodeMask = getCodeFenceMask(lines, context);
-  lines = lines.flatMap((line, index) => originalCodeMask[index] ? [line] : splitSingleMathFenceLine(line));
-  const codeMask = getCodeFenceMask(lines, context);
+  const splitLines: string[] = [];
+  let splitChangedLineCount = false;
+  for (let i = 0; i < lines.length; i++) {
+    const parts = originalCodeMask[i] ? [lines[i]] : splitSingleMathFenceLine(lines[i]);
+    if (parts.length !== 1 || parts[0] !== lines[i]) {
+      splitChangedLineCount = true;
+    }
+    splitLines.push(...parts);
+  }
+
+  const codeMask = splitChangedLineCount ? getCodeFenceMask(splitLines, context) : originalCodeMask;
+  lines = splitChangedLineCount ? splitLines : lines;
   const result: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
@@ -458,6 +468,10 @@ function shouldAddSpaceAfterInlineMath(line: string, nextIndex: number): boolean
 }
 
 function normalizeInlineMathSpacingInLine(line: string): string {
+  if (!line.includes('$')) {
+    return line;
+  }
+
   let result = '';
 
   for (let i = 0; i < line.length; i++) {
@@ -673,19 +687,7 @@ function moveMathOutOfCallouts(lines: string[], context: FormatContext): string[
   return result;
 }
 
-function removeEmptyBlockquoteLines(lines: string[], context: FormatContext): string[] {
-  const codeMask = getCodeFenceMask(lines, context);
-
-  return lines.filter((line, index) => {
-    if (codeMask[index]) {
-      return true;
-    }
-
-    return !/^(>\s*)+$/.test(line.trim());
-  });
-}
-
-function compactBlankLines(lines: string[], context: FormatContext): string[] {
+function normalizeBasicLineCleanup(lines: string[], context: FormatContext): string[] {
   const codeMask = getCodeFenceMask(lines, context);
   const result: string[] = [];
   let previousWasBlank = false;
@@ -697,7 +699,12 @@ function compactBlankLines(lines: string[], context: FormatContext): string[] {
       continue;
     }
 
-    if (lines[i].trim() === '') {
+    const line = lines[i].replace(/[ \t]+$/g, '');
+    if (/^(>\s*)+$/.test(line.trim())) {
+      continue;
+    }
+
+    if (line.trim() === '') {
       if (!previousWasBlank) {
         result.push('');
       }
@@ -705,7 +712,7 @@ function compactBlankLines(lines: string[], context: FormatContext): string[] {
       continue;
     }
 
-    result.push(lines[i]);
+    result.push(line);
     previousWasBlank = false;
   }
 
@@ -721,6 +728,7 @@ function normalizeHeadingSpacing(lines: string[], context: FormatContext): strin
   const codeMask = getCodeFenceMask(lines, context);
   const result: string[] = [];
   let currentContentHeadingLevel: number | null = null;
+  let latestHeadingLevel: number | null = null;
   let pendingBlank = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -759,6 +767,7 @@ function normalizeHeadingSpacing(lines: string[], context: FormatContext): strin
       }
 
       result.push(line);
+      latestHeadingLevel = lineHeadingLevel;
       pendingBlank = false;
       continue;
     }
@@ -772,14 +781,7 @@ function normalizeHeadingSpacing(lines: string[], context: FormatContext): strin
 
     result.push(line);
     pendingBlank = false;
-
-    for (let j = result.length - 2; j >= 0; j--) {
-      const previousHeadingLevel = headingLevel(result[j]);
-      if (previousHeadingLevel !== null) {
-        currentContentHeadingLevel = previousHeadingLevel;
-        break;
-      }
-    }
+    currentContentHeadingLevel = latestHeadingLevel;
   }
 
   return result;
@@ -821,17 +823,35 @@ function isTableStart(lines: string[], codeMask: boolean[], index: number): bool
   return index + 1 < lines.length &&
     !codeMask[index] &&
     !codeMask[index + 1] &&
+    lines[index].includes('|') &&
     hasUnescapedPipe(lines[index]) &&
     isTableDelimiter(lines[index + 1]);
 }
 
-function ensureTableSpacing(lines: string[], context: FormatContext): string[] {
+function pushLineWithAdjacentCalloutSpacing(result: string[], line: string, isCode: boolean) {
+  if (!isCode && calloutStartRegex.test(line)) {
+    let lastNonBlank = result.length - 1;
+    while (lastNonBlank >= 0 && result[lastNonBlank].trim() === '') {
+      lastNonBlank--;
+    }
+
+    if (lastNonBlank >= 0 && result[lastNonBlank].startsWith('>')) {
+      while (result.length > lastNonBlank + 1) {
+        result.pop();
+      }
+      result.push('');
+    }
+  }
+
+  result.push(line);
+}
+
+function ensureTableAndAdjacentCalloutSpacing(lines: string[], context: FormatContext): string[] {
   const codeMask = getCodeFenceMask(lines, context);
   const result: string[] = [];
-
   for (let i = 0; i < lines.length; i++) {
     if (!isTableStart(lines, codeMask, i)) {
-      result.push(lines[i]);
+      pushLineWithAdjacentCalloutSpacing(result, lines[i], codeMask[i]);
       continue;
     }
 
@@ -845,12 +865,14 @@ function ensureTableSpacing(lines: string[], context: FormatContext): string[] {
 
     const tableLines: string[] = [lines[i], lines[i + 1]];
     i += 2;
-    while (i < lines.length && !codeMask[i] && hasUnescapedPipe(lines[i]) && lines[i].trim() !== '') {
+    while (i < lines.length && !codeMask[i] && lines[i].includes('|') && hasUnescapedPipe(lines[i]) && lines[i].trim() !== '') {
       tableLines.push(lines[i]);
       i++;
     }
 
-    result.push(...tableLines);
+    for (const tableLine of tableLines) {
+      result.push(tableLine);
+    }
 
     while (i < lines.length && lines[i].trim() === '') {
       i++;
@@ -867,36 +889,6 @@ function ensureTableSpacing(lines: string[], context: FormatContext): string[] {
   return result;
 }
 
-function ensureAdjacentCalloutSpacing(lines: string[], context: FormatContext): string[] {
-  const codeMask = getCodeFenceMask(lines, context);
-  const result: string[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    if (!codeMask[i] && calloutStartRegex.test(lines[i])) {
-      let lastNonBlank = result.length - 1;
-      while (lastNonBlank >= 0 && result[lastNonBlank].trim() === '') {
-        lastNonBlank--;
-      }
-
-      if (lastNonBlank >= 0 && result[lastNonBlank].startsWith('>')) {
-        while (result.length > lastNonBlank + 1) {
-          result.pop();
-        }
-        result.push('');
-      }
-    }
-
-    result.push(lines[i]);
-  }
-
-  return result;
-}
-
-function trimTrailingWhitespaceOutsideCode(lines: string[], context: FormatContext): string[] {
-  const codeMask = getCodeFenceMask(lines, context);
-  return lines.map((line, index) => codeMask[index] ? line : line.replace(/[ \t]+$/g, ''));
-}
-
 export function formatPersonalObsidianMarkdown(text: string, options: PersonalObsidianFormatterOptions = {}): string {
   const context = createFormatContext();
   let lines = linesOf(text);
@@ -908,12 +900,9 @@ export function formatPersonalObsidianMarkdown(text: string, options: PersonalOb
   } else {
     lines = moveMathOutOfCallouts(lines, context);
   }
-  lines = removeEmptyBlockquoteLines(lines, context);
-  lines = compactBlankLines(lines, context);
+  lines = normalizeBasicLineCleanup(lines, context);
   lines = normalizeHeadingSpacing(lines, context);
-  lines = ensureTableSpacing(lines, context);
-  lines = ensureAdjacentCalloutSpacing(lines, context);
-  lines = trimTrailingWhitespaceOutsideCode(lines, context);
+  lines = ensureTableAndAdjacentCalloutSpacing(lines, context);
 
   while (lines.length > 0 && lines[0].trim() === '') {
     lines.shift();
