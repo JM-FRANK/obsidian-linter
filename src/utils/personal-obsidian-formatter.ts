@@ -197,17 +197,26 @@ function splitLatexLineBreaksWithAst(line: string, context: FormatContext): stri
   }
 
   const parts: string[] = [];
+  const pushPart = (part: string) => {
+    for (const linePart of part.split(/\r?\n/)) {
+      const trimmedPart = linePart.trim();
+      if (trimmedPart !== '') {
+        parts.push(trimmedPart);
+      }
+    }
+  };
+
   let start = 0;
   for (const end of breakOffsets.sort((a, b) => a - b)) {
-    parts.push(line.slice(start, end).trim());
+    pushPart(line.slice(start, end));
     start = end;
     while (start < line.length && /\s/.test(line[start])) {
       start++;
     }
   }
 
-  parts.push(line.slice(start).trim());
-  return parts.filter((part) => part !== '');
+  pushPart(line.slice(start));
+  return parts;
 }
 
 function splitLatexEnvironmentBoundariesWithAst(line: string, context: FormatContext): string[] | null {

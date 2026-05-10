@@ -428,6 +428,29 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'Existing callout aligned block keeps quote prefixes on ampersand lines',
+      before: dedent`
+        > [!eg] 求 $\\displaystyle \\int x\\cos x\\,dx$
+        > $$
+        > \\begin{aligned}
+        > \\int x \\,d\\sin x
+        > &=x\\sin x-\\int \\sin x\\,dx \\\\
+        > &=x\\sin x+\\cos x+C.
+        > \\end{aligned}
+        > $$
+      `,
+      after: dedent`
+        > [!eg] 求 $\\displaystyle \\int x\\cos x\\,dx$
+        > $$
+        > \\begin{aligned}
+        > \\int x \\,d\\sin x
+        > &=x\\sin x-\\int \\sin x\\,dx \\\\
+        > &=x\\sin x+\\cos x+C.
+        > \\end{aligned}
+        > $$
+      ` + '\n',
+    },
+    {
       testName: 'Callout math fences with uneven spacing close at the same quote depth',
       before: dedent`
         > [!eg] Example title
