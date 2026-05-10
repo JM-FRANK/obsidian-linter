@@ -1,3 +1,5 @@
+import {parseMath} from '@unified-latex/unified-latex-util-parse';
+
 type CodeFenceInfo = {
   marker: string;
   length: number;
@@ -7,6 +9,7 @@ const calloutStartRegex = /^>\s*\[![^\]]+\]/;
 const codeFenceRegex = /^\s*(`{3,}|~{3,})/;
 const closingPunctuationRegex = /^[,.;:!?，。！？；：、）)\]}》」』】]/;
 const openingPunctuationRegex = /^[(（[{《「『【]/;
+const latexParseCache = new Map<string, boolean>();
 
 export type PersonalObsidianFormatterOptions = {
   moveMathIntoCallout?: boolean;
@@ -56,11 +59,36 @@ function normalizeEquationSpacing(text: string): string {
   return text.replace(/\s*=\s*/g, ' = ').replace(/[ \t]{2,}/g, ' ').trim();
 }
 
+function canParseMathContent(content: string[]): boolean {
+  const source = content.join('\n').trim();
+  if (source === '') {
+    return true;
+  }
+
+  const cachedResult = latexParseCache.get(source);
+  if (cachedResult !== undefined) {
+    return cachedResult;
+  }
+
+  try {
+    parseMath(source);
+    latexParseCache.set(source, true);
+    return true;
+  } catch {
+    latexParseCache.set(source, false);
+    return false;
+  }
+}
+
 function splitLatexEnvironmentBoundaries(line: string): string[] {
   return line.replace(/\s*(\\(?:begin|end)\{[^}]+\})\s*/g, '\n$1\n')
       .split('\n')
       .map((part) => part.trim())
       .filter((part) => part !== '');
+}
+
+function isListItemLine(line: string): boolean {
+  return /^\s*(?:[-+*]|\d+[.)])\s+/.test(line);
 }
 
 function splitSingleMathFenceLine(line: string): string[] {
@@ -91,9 +119,17 @@ function splitSingleMathFenceLine(line: string): string[] {
 }
 
 function normalizeMathBlockContent(content: string[]): string[] {
+  if (!canParseMathContent(content)) {
+    return content;
+  }
+
   const trimmedContent = content.map((line) => line.trim()).filter((line) => line !== '');
   if (trimmedContent.length === 0) {
     return [];
+  }
+
+  if (trimmedContent.some((line) => calloutStartRegex.test(line) || headingLevel(stripBlockquotePrefixes(line)) !== null)) {
+    return trimmedContent;
   }
 
   const hasLatexEnvironment = trimmedContent.some((line) => /\\(?:begin|end)\{[^}]+\}/.test(line));
@@ -130,7 +166,11 @@ function normalizeBlockMath(lines: string[]): string[] {
     const trimmedLine = lines[i].trim();
 
     if (!codeMask[i] && trimmedLine.startsWith('$$') && trimmedLine.endsWith('$$') && trimmedLine.length > 4) {
-      result.push(lines[i]);
+      if (isListItemLine(lines[i])) {
+        result.push(lines[i]);
+      } else {
+        result.push('$$', ...normalizeMathBlockContent([trimmedLine.slice(2, -2)]), '$$');
+      }
       continue;
     }
 

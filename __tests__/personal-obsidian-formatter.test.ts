@@ -142,9 +142,21 @@ ruleTest({
       ` + '\n',
     },
     {
-      testName: 'Single-line dollar math remains unchanged',
+      testName: 'Single-line dollar math is expanded outside list items',
       before: '$$\\begin{aligned} x &= y \\\\ z &= w \\end{aligned}$$\n',
-      after: '$$\\begin{aligned} x &= y \\\\ z &= w \\end{aligned}$$\n',
+      after: dedent`
+        $$
+        \\begin{aligned}
+        x &= y \\\\
+        z &= w
+        \\end{aligned}
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'Single-line dollar math remains unchanged in list items',
+      before: '- $$\\begin{aligned} x &= y \\\\ z &= w \\end{aligned}$$\n',
+      after: '- $$\\begin{aligned} x &= y \\\\ z &= w \\end{aligned}$$\n',
     },
     {
       testName: 'Math fences sharing lines with text are moved to their own lines',
@@ -314,6 +326,45 @@ ruleTest({
         > $$
         > z + 1 = w
         > $$
+      ` + '\n',
+    },
+    {
+      testName: 'Callout followed by a heading does not absorb the heading before following math',
+      before: dedent`
+        > [!important] 方向性
+        > 定积分不仅看“面积大小”，也看积分方向。
+        > 从 $a$ 到 $b$ 与从 $b$ 到 $a$ 的路径方向相反，所以符号相反。
+
+        ### 6.4.3 区间可加性 若 $c$ 在 $a,b$ 之间，则
+        $$
+        \\int_a^b f(x)\\,dx = \\int_a^c f(x)\\,dx+\\int_c^b f(x)\\,dx.
+        $$
+      `,
+      after: dedent`
+        > [!important] 方向性
+        > 定积分不仅看“面积大小”，也看积分方向。
+        > 从 $a$ 到 $b$ 与从 $b$ 到 $a$ 的路径方向相反，所以符号相反。
+        ### 6.4.3 区间可加性 若 $c$ 在 $a,b$ 之间，则
+        $$
+        \\int_a^b f(x)\\,dx = \\int_a^c f(x)\\,dx+\\int_c^b f(x)\\,dx.
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'Math normalization does not collapse callouts or headings when math fences are mixed with markdown blocks',
+      before: dedent`
+        $$
+        > [!important] 方向性
+        > 定积分不仅看“面积大小”，也看积分方向。
+        ### 6.4.3 区间可加性
+        $$
+      `,
+      after: dedent`
+        $$
+        > [!important] 方向性
+        > 定积分不仅看“面积大小”，也看积分方向。
+        ### 6.4.3 区间可加性
+        $$
       ` + '\n',
     },
     {

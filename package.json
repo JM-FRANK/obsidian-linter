@@ -58,6 +58,7 @@
   },
   "dependencies": {
     "@popperjs/core": "^2.11.6",
+    "@unified-latex/unified-latex-util-parse": "^1.8.4",
     "async-lock": "^1.4.1",
     "diff-match-patch": "^1.0.5",
     "loglevel": "^1.9.1",
