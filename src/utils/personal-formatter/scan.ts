@@ -175,14 +175,57 @@ function scanTableSpans(lines: string[], codeFenceMask: boolean[], mathBlockMask
   return spans;
 }
 
+function scanYamlFrontmatterSpans(lines: string[]): PersonalFormatterSpan[] {
+  if (lines.length === 0 || lines[0].trim() !== '---') {
+    return [];
+  }
+
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '---') {
+      return [{kind: 'yaml', start: 0, end: i}];
+    }
+  }
+
+  return [];
+}
+
+function isCustomIgnoreStart(line: string): boolean {
+  return /<!--\s*linter-disable\s*-->|%%\s*linter-disable\s*%%/.test(line);
+}
+
+function isCustomIgnoreEnd(line: string): boolean {
+  return /<!--\s*linter-enable\s*-->|%%\s*linter-enable\s*%%/.test(line);
+}
+
+function scanCustomIgnoreSpans(lines: string[]): PersonalFormatterSpan[] {
+  const spans: PersonalFormatterSpan[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!isCustomIgnoreStart(lines[i])) {
+      continue;
+    }
+
+    const start = i;
+    while (i < lines.length && !isCustomIgnoreEnd(lines[i])) {
+      i++;
+    }
+
+    spans.push({kind: 'customIgnore', start, end: Math.min(i, lines.length - 1)});
+  }
+
+  return spans;
+}
+
 export function scanPersonalFormatterLines(lines: string[], context: FormatContext): PersonalFormatterScanResult {
   const codeFenceMask = scanCodeFenceMask(lines, context);
   const mathBlockMask = scanMathBlockMask(lines);
   const spans = [
+    ...scanYamlFrontmatterSpans(lines),
     ...scanMaskSpans('codeFence', codeFenceMask),
     ...scanMaskSpans('mathBlock', mathBlockMask),
     ...scanCalloutSpans(lines, codeFenceMask, mathBlockMask),
     ...scanTableSpans(lines, codeFenceMask, mathBlockMask),
+    ...scanCustomIgnoreSpans(lines),
   ];
 
   return {

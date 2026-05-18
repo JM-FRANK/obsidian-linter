@@ -215,8 +215,9 @@ Step 7: 更新 review 文档和 README，写清楚主入口与限制。
 3. 第三阶段：新增 `scan.ts`，并将 code fence / math block mask 入口集中到 scanner。
 4. 第四阶段：新增 `profile.ts`，把旧 boolean 选项映射为内部 profile 策略。
 5. 第五阶段：新增 `PERSONAL_OBSIDIAN_FORMATTER_USAGE.md`，明确一键命令为权威入口、普通规则为兼容入口，并记录冲突规则。
+6. 后续推进：`scan.ts` 已继续承接 table、callout、YAML frontmatter、custom ignore span 识别；spacing 模块已改为消费 table/callout span。
 
 未完成：
 
-1. 将 table/callout/yaml/custom ignore 的扫描也迁移到 `scan.ts` 并逐步替换各模块局部判断。
+1. 将 YAML/custom ignore span 接入 formatter 模块的保护策略。
 2. 将普通 Linter 规则 UI 和 General tab 全局开关从 boolean 迁移为显式三态下拉。
