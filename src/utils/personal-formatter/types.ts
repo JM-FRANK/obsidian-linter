@@ -14,6 +14,28 @@ export type FormatContext = {
   latexParseCache: Map<string, unknown[] | null>;
 };
 
+export type PersonalFormatterSpanKind =
+  | 'codeFence'
+  | 'mathBlock'
+  | 'callout'
+  | 'table'
+  | 'yaml'
+  | 'customIgnore';
+
+export type PersonalFormatterSpan = {
+  kind: PersonalFormatterSpanKind;
+  start: number;
+  end: number;
+  meta?: Record<string, unknown>;
+};
+
+export type PersonalFormatterScanResult = {
+  lines: string[];
+  spans: PersonalFormatterSpan[];
+  codeFenceMask: boolean[];
+  mathBlockMask: boolean[];
+};
+
 export type PersonalObsidianFormatterOptions = {
   moveMathIntoCallout?: boolean;
 };
