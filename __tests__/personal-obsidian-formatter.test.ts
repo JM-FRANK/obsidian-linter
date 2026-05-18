@@ -651,6 +651,50 @@ ruleTest({
       },
     },
     {
+      testName: 'Block math immediately after callout stays outside callout with keep strategy',
+      before: dedent`
+        > [!eg] Example title
+        > Content
+        $$
+        x + 1 = y
+        $$
+      `,
+      after: dedent`
+        > [!eg] Example title
+        > Content
+
+        $$
+        x + 1 = y
+        $$
+      ` + '\n',
+      options: {
+        mathPlacement: 'keep',
+      },
+    },
+    {
+      testName: 'Legacy rule config key still moves callout math outside when disabled',
+      before: dedent`
+        > [!eg] Example title
+        > Content
+        > $$
+        > x + 1 = y
+        > $$
+        > More content
+      `,
+      after: dedent`
+        > [!eg] Example title
+        > Content
+
+        $$
+        x + 1 = y
+        $$
+        > More content
+      ` + '\n',
+      options: {
+        'move-math-into-callout': false,
+      },
+    },
+    {
       testName: 'Block math inside callout moves outside callout when disabled',
       before: dedent`
         > [!eg] Example title

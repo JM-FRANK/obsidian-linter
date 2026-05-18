@@ -636,6 +636,10 @@ export default {
         'name': 'Move following math into callouts',
         'description': 'Immediately following block math is moved into the preceding Obsidian callout when enabled.',
       },
+      'math-placement': {
+        'name': 'Callout math placement',
+        'description': 'Controls how the personal formatter handles math blocks next to Obsidian callouts.',
+      },
     },
     // prevent-double-checklist-indicator-on-paste.ts
     'prevent-double-checklist-indicator-on-paste': {
@@ -1016,6 +1020,10 @@ export default {
     'file system': 'File system',
     'frontmatter': 'YAML frontmatter',
     'user or Linter edits': 'Changes in Obsidian',
+    // personal-obsidian-formatter.ts
+    'move-into-callout': 'Move following math into callouts',
+    'keep': 'Keep math where it is',
+    'move-out-of-callout': 'Move callout math out of callouts',
     // quote-style.ts
     '\'\'': '\'\'', // leave as is
     '‘’': '‘’', // leave as is

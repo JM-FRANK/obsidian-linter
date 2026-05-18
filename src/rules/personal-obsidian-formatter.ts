@@ -1,10 +1,12 @@
 import {Options, RuleType} from '../rules';
-import RuleBuilder, {BooleanOptionBuilder, ExampleBuilder, OptionBuilderBase} from './rule-builder';
+import RuleBuilder, {DropdownOptionBuilder, ExampleBuilder, OptionBuilderBase} from './rule-builder';
 import dedent from 'ts-dedent';
 import {formatPersonalObsidianMarkdown} from '../utils/personal-obsidian-formatter';
+import {CalloutMathPlacement} from '../utils/personal-formatter/types';
 
 class PersonalObsidianFormatterOptions implements Options {
-  moveMathIntoCallout: boolean = true;
+  mathPlacement: CalloutMathPlacement = 'move-into-callout';
+  moveMathIntoCallout?: boolean = true;
 }
 
 @RuleBuilder.register
@@ -21,8 +23,20 @@ export default class PersonalObsidianFormatter extends RuleBuilder<PersonalObsid
     return PersonalObsidianFormatterOptions;
   }
 
+  buildRuleOptions(options?: Options): PersonalObsidianFormatterOptions {
+    const ruleOptions = super.buildRuleOptions(options);
+    const legacyMoveMathIntoCallout = options?.['move-math-into-callout'] ?? options?.moveMathIntoCallout;
+
+    if (legacyMoveMathIntoCallout !== undefined && options?.['math-placement'] === undefined && options?.mathPlacement === undefined) {
+      ruleOptions.mathPlacement = legacyMoveMathIntoCallout ? 'move-into-callout' : 'move-out-of-callout';
+    }
+
+    return ruleOptions;
+  }
+
   apply(text: string, options: PersonalObsidianFormatterOptions): string {
     return formatPersonalObsidianMarkdown(text, {
+      mathPlacement: options.mathPlacement,
       moveMathIntoCallout: options.moveMathIntoCallout,
     });
   }
@@ -62,11 +76,25 @@ export default class PersonalObsidianFormatter extends RuleBuilder<PersonalObsid
   }
   get optionBuilders(): OptionBuilderBase<PersonalObsidianFormatterOptions>[] {
     return [
-      new BooleanOptionBuilder({
+      new DropdownOptionBuilder<PersonalObsidianFormatterOptions, CalloutMathPlacement>({
         OptionsClass: PersonalObsidianFormatterOptions,
-        nameKey: 'rules.personal-obsidian-formatter.move-math-into-callout.name',
-        descriptionKey: 'rules.personal-obsidian-formatter.move-math-into-callout.description',
-        optionsKey: 'moveMathIntoCallout',
+        nameKey: 'rules.personal-obsidian-formatter.math-placement.name',
+        descriptionKey: 'rules.personal-obsidian-formatter.math-placement.description',
+        optionsKey: 'mathPlacement',
+        records: [
+          {
+            value: 'move-into-callout',
+            description: 'Immediately following math belongs to the preceding callout.',
+          },
+          {
+            value: 'keep',
+            description: 'Only normalize spacing; do not move math into or out of callouts.',
+          },
+          {
+            value: 'move-out-of-callout',
+            description: 'Block math inside callouts is moved back outside the callout.',
+          },
+        ],
       }),
     ];
   }
