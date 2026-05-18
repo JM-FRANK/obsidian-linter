@@ -1,4 +1,5 @@
 import PersonalObsidianFormatter from '../src/rules/personal-obsidian-formatter';
+import {formatPersonalObsidianMarkdown} from '../src/utils/personal-obsidian-formatter';
 import dedent from 'ts-dedent';
 import {ruleTest} from './common';
 
@@ -9,6 +10,11 @@ ruleTest({
       testName: 'Trailing spaces are trimmed',
       before: '# Title    \nContent    \n',
       after: '# Title\nContent\n',
+    },
+    {
+      testName: 'Empty input currently normalizes to a final newline',
+      before: '',
+      after: '\n',
     },
     {
       testName: 'Redundant blank lines are compacted',
@@ -726,6 +732,11 @@ ruleTest({
       after: '```md\n>\n> \n```\n',
     },
     {
+      testName: 'Unclosed code fences conservatively protect the rest of the file',
+      before: '```md\n$$\nx + 1\n=\ny',
+      after: '```md\n$$\nx + 1\n=\ny\n',
+    },
+    {
       testName: 'Comment boundaries remain valid while contents may be formatted',
       before: dedent`
         %%
@@ -807,4 +818,55 @@ ruleTest({
       ` + '\n',
     },
   ],
+});
+
+describe('Personal Obsidian formatter behavior freeze', () => {
+  const idempotentSamples = [
+    dedent`
+      Text
+      | A | B |
+      |---|---|
+      | 1 | 2 |
+      > [!eg] Example
+      > Content
+      $$
+      x + 1
+      =
+      y
+      $$
+    `,
+    dedent`
+      ## 标题1
+
+      正文
+
+
+      ## 标题2
+      #数学/微积分
+
+      ### 标题3
+    `,
+    dedent`
+      \`\`\`md
+      $$
+      x + 1
+      =
+      y
+      $$
+      \`\`\`
+
+      Here is {漢字|かんじ}.
+      $D$开头。
+    `,
+  ];
+
+  it.each(idempotentSamples)('is idempotent for frozen sample %#', (sample) => {
+    const formatted = formatPersonalObsidianMarkdown(sample);
+
+    expect(formatPersonalObsidianMarkdown(formatted)).toBe(formatted);
+  });
+
+  it.todo('protects inline code spans from inline math spacing');
+  it.todo('protects URL query strings from inline math spacing');
+  it.todo('protects currency-like dollar amounts from inline math spacing');
 });

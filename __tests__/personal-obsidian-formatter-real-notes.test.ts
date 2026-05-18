@@ -73,8 +73,10 @@ describe('Personal Obsidian formatter real note fixtures', () => {
   for (const noteName of realNoteFixtures) {
     it(`${noteName} keeps protected structures while normalizing layout`, () => {
       const original = readFileSync(`${baselineDir}/${noteName}.original.md`, 'utf8');
+      const expected = readFileSync(`${baselineDir}/${noteName}.formatted.md`, 'utf8');
       const formatted = formatPersonalObsidianMarkdown(original);
 
+      expect(formatted).toBe(expected);
       expect(formatted.endsWith('\n')).toBe(true);
       expect(formatted).not.toMatch(/[ \t]+$/m);
       expect(formatted).not.toMatch(/\n[ \t]*\n[ \t]*\n/);
