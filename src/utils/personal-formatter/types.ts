@@ -36,6 +36,29 @@ export type PersonalFormatterScanResult = {
   mathBlockMask: boolean[];
 };
 
+export type CalloutMathPlacement = 'move-into-callout' | 'move-out-of-callout' | 'keep';
+
+export type PersonalFormatterProfile = {
+  mathBlock: {
+    normalizeBlockMath: boolean;
+    collapseSimpleEquations: boolean;
+  };
+  inlineMath: {
+    normalizeSpacing: boolean;
+  };
+  callout: {
+    mathPlacement: CalloutMathPlacement;
+    preserveInternalBlankQuoteLines: boolean;
+  };
+  spacing: {
+    tableBlankLines: 'one';
+    calloutBlankLines: 'one-around' | 'adjacent-only';
+  };
+  headings: {
+    strategy: 'personal-compact' | 'none';
+  };
+};
+
 export type PersonalObsidianFormatterOptions = {
   moveMathIntoCallout?: boolean;
 };
