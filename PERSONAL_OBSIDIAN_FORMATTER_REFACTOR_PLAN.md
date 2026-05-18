@@ -205,3 +205,19 @@ Step 7: 更新 review 文档和 README，写清楚主入口与限制。
 - callout 内空引用行当前会被删除。
 
 这些问题放到 scanner 和 profile 引入后统一处理，避免第一阶段混入行为变更。
+
+## 10. 当前进度
+
+已完成：
+
+1. 第一阶段：行为冻结测试和真实笔记 baseline。
+2. 第二阶段：将 `personal-obsidian-formatter.ts` 机械拆分为 `src/utils/personal-formatter/` 模块目录。
+3. 第三阶段：新增 `scan.ts`，并将 code fence / math block mask 入口集中到 scanner。
+4. 第四阶段：新增 `profile.ts`，把旧 boolean 选项映射为内部 profile 策略。
+5. 第五阶段：新增 `PERSONAL_OBSIDIAN_FORMATTER_USAGE.md`，明确一键命令为权威入口、普通规则为兼容入口，并记录冲突规则。
+
+未完成：
+
+1. 将 table/callout/yaml/custom ignore 的扫描也迁移到 `scan.ts` 并逐步替换各模块局部判断。
+2. 把公开配置从 `moveMathIntoCallout: boolean` 迁移到显式三态。
+3. 修复第一阶段保留的 3 个行内数学保护 `todo`。
