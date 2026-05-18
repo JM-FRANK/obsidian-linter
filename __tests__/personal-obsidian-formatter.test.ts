@@ -883,4 +883,44 @@ describe('Personal Obsidian formatter behavior freeze', () => {
 
     expect(formatPersonalObsidianMarkdown(sample)).toBe(sample);
   });
+
+  it('keeps callout math placement unchanged with explicit keep strategy', () => {
+    const sample = dedent`
+      > [!eg] Example title
+      > Content
+      $$
+      x + 1 = y
+      $$
+    ` + '\n';
+
+    expect(formatPersonalObsidianMarkdown(sample, {mathPlacement: 'keep'})).toBe(dedent`
+      > [!eg] Example title
+      > Content
+
+      $$
+      x + 1 = y
+      $$
+    ` + '\n');
+  });
+
+  it('moves callout math out with explicit move-out strategy', () => {
+    const sample = dedent`
+      > [!eg] Example title
+      > Content
+      > $$
+      > x + 1 = y
+      > $$
+      > More content
+    ` + '\n';
+
+    expect(formatPersonalObsidianMarkdown(sample, {mathPlacement: 'move-out-of-callout'})).toBe(dedent`
+      > [!eg] Example title
+      > Content
+
+      $$
+      x + 1 = y
+      $$
+      > More content
+    ` + '\n');
+  });
 });

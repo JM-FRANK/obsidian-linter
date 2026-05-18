@@ -60,5 +60,6 @@ export type PersonalFormatterProfile = {
 };
 
 export type PersonalObsidianFormatterOptions = {
+  mathPlacement?: CalloutMathPlacement;
   moveMathIntoCallout?: boolean;
 };

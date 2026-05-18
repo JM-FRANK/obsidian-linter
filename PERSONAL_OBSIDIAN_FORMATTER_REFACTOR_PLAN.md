@@ -219,5 +219,4 @@ Step 7: 更新 review 文档和 README，写清楚主入口与限制。
 未完成：
 
 1. 将 table/callout/yaml/custom ignore 的扫描也迁移到 `scan.ts` 并逐步替换各模块局部判断。
-2. 把公开配置从 `moveMathIntoCallout: boolean` 迁移到显式三态。
-3. 修复第一阶段保留的 3 个行内数学保护 `todo`。
+2. 将普通 Linter 规则 UI 和 General tab 全局开关从 boolean 迁移为显式三态下拉。

@@ -49,22 +49,24 @@ Personal Obsidian formatter
 
 ## 当前兼容行为
 
-当前公开选项仍是：
+当前 formatter 函数已经支持显式三态：
+
+```ts
+mathPlacement?: 'keep' | 'move-into-callout' | 'move-out-of-callout';
+```
+
+兼容旧选项：
 
 ```ts
 moveMathIntoCallout?: boolean;
 ```
 
-内部已经映射为 profile 策略：
+旧选项映射为 profile 策略：
 
 - `true` -> `move-into-callout`
-- `false` -> `move-out-of-callout`
+- `false` -> `move-out-of-callout`，用于保持历史行为
 
-注意：`false` 目前保留历史行为，会把 callout 内同层级块数学移出 callout。未来建议迁移为显式三态：
-
-```ts
-'keep' | 'move-into-callout' | 'move-out-of-callout'
-```
+注意：普通 Linter 规则 UI 和 General tab 全局开关仍使用旧 boolean。后续如果需要暴露给界面，应把它们迁移为三态下拉。
 
 ## 后续待处理风险
 

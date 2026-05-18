@@ -22,12 +22,14 @@ export const defaultPersonalFormatterProfile: PersonalFormatterProfile = {
 };
 
 export function resolvePersonalFormatterProfile(options: PersonalObsidianFormatterOptions = {}): PersonalFormatterProfile {
+  const mathPlacement = options.mathPlacement ??
+    ((options.moveMathIntoCallout ?? true) ? 'move-into-callout' : 'move-out-of-callout');
+
   return {
     ...defaultPersonalFormatterProfile,
     callout: {
       ...defaultPersonalFormatterProfile.callout,
-      // Keep legacy behavior until the public option is migrated to an explicit three-state setting.
-      mathPlacement: (options.moveMathIntoCallout ?? true) ? 'move-into-callout' : 'move-out-of-callout',
+      mathPlacement,
     },
   };
 }
