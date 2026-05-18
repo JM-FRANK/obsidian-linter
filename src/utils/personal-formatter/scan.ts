@@ -244,8 +244,8 @@ export function scanPersonalFormatterLines(lines: string[], context: FormatConte
   return scanResult;
 }
 
-export function findSpanStartingAt(scanResult: PersonalFormatterScanResult, kind: PersonalFormatterSpan['kind'], index: number): PersonalFormatterSpan | null {
-  return scanResult.spans.find((span) => span.kind === kind && span.start === index) ?? null;
+export function findBlockStartingAt(scanResult: PersonalFormatterScanResult, index: number): PersonalFormatterSpan | null {
+  return scanResult.spans.find((span) => (span.kind === 'callout' || span.kind === 'table') && span.start === index) ?? null;
 }
 
 export function scanSpanMask(scanResult: PersonalFormatterScanResult, kinds: PersonalFormatterSpan['kind'][]): boolean[] {

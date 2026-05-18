@@ -1,6 +1,6 @@
 import {FormatContext} from './types';
 import {getCodeFenceMask} from './line-utils';
-import {findSpanStartingAt, scanPersonalFormatterLines, scanProtectedLineMask, scanSpanMask} from './scan';
+import {findBlockStartingAt, scanPersonalFormatterLines, scanProtectedLineMask} from './scan';
 
 export function normalizeBasicLineCleanup(lines: string[], context: FormatContext): string[] {
   const protectedMask = scanProtectedLineMask(lines, context);
@@ -49,7 +49,7 @@ function pushSpacedBlock(result: string[], blockLines: string[]) {
 
 export function ensureTableAndCalloutSpacing(lines: string[], context: FormatContext): string[] {
   const scanResult = scanPersonalFormatterLines(lines, context);
-  const protectedMask = scanSpanMask(scanResult, ['yaml', 'customIgnore']);
+  const protectedMask = scanProtectedLineMask(lines, context);
   const codeMask = scanResult.codeFenceMask;
   const result: string[] = [];
   for (let i = 0; i < lines.length; i++) {
@@ -58,31 +58,12 @@ export function ensureTableAndCalloutSpacing(lines: string[], context: FormatCon
       continue;
     }
 
-    const calloutSpan = findSpanStartingAt(scanResult, 'callout', i);
-    if (calloutSpan) {
-      const calloutLines = lines.slice(calloutSpan.start, calloutSpan.end + 1);
-      i = calloutSpan.end + 1;
+    const blockSpan = findBlockStartingAt(scanResult, i);
+    if (blockSpan) {
+      const blockLines = lines.slice(blockSpan.start, blockSpan.end + 1);
+      i = blockSpan.end + 1;
 
-      pushSpacedBlock(result, calloutLines);
-      while (i < lines.length && lines[i].trim() === '') {
-        i++;
-      }
-
-      if (i < lines.length) {
-        result.push('');
-        i--;
-      } else {
-        i--;
-      }
-      continue;
-    }
-
-    const tableSpan = findSpanStartingAt(scanResult, 'table', i);
-    if (tableSpan) {
-      const tableLines = lines.slice(tableSpan.start, tableSpan.end + 1);
-      i = tableSpan.end + 1;
-
-      pushSpacedBlock(result, tableLines);
+      pushSpacedBlock(result, blockLines);
       while (i < lines.length && lines[i].trim() === '') {
         i++;
       }

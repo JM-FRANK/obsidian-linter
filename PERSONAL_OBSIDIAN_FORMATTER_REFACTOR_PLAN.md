@@ -221,7 +221,8 @@ Step 7: 更新 review 文档和 README，写清楚主入口与限制。
 9. Scanner 回归测试：新增 `__tests__/personal-formatter-scan.test.ts`，覆盖 YAML、custom ignore、code fence 内伪 ignore、callout/table 相邻和 math block 内部误识别。
 10. Scanner helper 收敛：新增 `scanProtectedLineMask()`，模块侧不再重复拼装 YAML/custom ignore 保护 mask。
 11. Scanner 缓存：`FormatContext` 新增 `scanResultCache`，同一轮 formatter pipeline 中同一份 `lines` 数组只扫描一次。
+12. Scanner 查询 API：新增 `findBlockStartingAt()`，spacing 模块通过块级查询处理 callout/table，不再分别拼接 span 查询。
 
 后续可选优化：
 
-1. 进一步拆出 scanner 查询 API，例如 `isProtectedLine()`、`findBlockAt()`，让模块不直接关心 span array 结构。
+1. 如果后续新增更多结构，再继续把模块侧的 mask 查询升级为更语义化的 scanner API。

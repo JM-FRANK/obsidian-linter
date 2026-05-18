@@ -1,5 +1,5 @@
 import {createFormatContext, linesOf} from '../src/utils/personal-formatter/line-utils';
-import {scanPersonalFormatterLines, scanProtectedLineMask, scanSpanMask} from '../src/utils/personal-formatter/scan';
+import {findBlockStartingAt, scanPersonalFormatterLines, scanProtectedLineMask, scanSpanMask} from '../src/utils/personal-formatter/scan';
 import {PersonalFormatterSpanKind} from '../src/utils/personal-formatter/types';
 import dedent from 'ts-dedent';
 
@@ -111,6 +111,11 @@ describe('personal formatter scanner', () => {
     expect(spansOfKind(text, 'table')).toEqual([
       {kind: 'table', start: 2, end: 4},
     ]);
+
+    const scanResult = scanPersonalFormatterLines(linesOf(text), createFormatContext());
+    expect(findBlockStartingAt(scanResult, 0)?.kind).toBe('callout');
+    expect(findBlockStartingAt(scanResult, 2)?.kind).toBe('table');
+    expect(findBlockStartingAt(scanResult, 5)).toBeNull();
   });
 
   it('does not scan callouts or tables inside math blocks', () => {
