@@ -866,7 +866,21 @@ describe('Personal Obsidian formatter behavior freeze', () => {
     expect(formatPersonalObsidianMarkdown(formatted)).toBe(formatted);
   });
 
-  it.todo('protects inline code spans from inline math spacing');
-  it.todo('protects URL query strings from inline math spacing');
-  it.todo('protects currency-like dollar amounts from inline math spacing');
+  it('protects inline code spans from inline math spacing', () => {
+    const sample = 'Use `这是$A_i$同时发生` as literal code.\n';
+
+    expect(formatPersonalObsidianMarkdown(sample)).toBe(sample);
+  });
+
+  it('protects URL query strings from inline math spacing', () => {
+    const sample = 'See https://example.com/search?q=$A_i$&lang=ja for details.\n';
+
+    expect(formatPersonalObsidianMarkdown(sample)).toBe(sample);
+  });
+
+  it('protects currency-like dollar amounts from inline math spacing', () => {
+    const sample = 'The range is $5 and $6 today.\n';
+
+    expect(formatPersonalObsidianMarkdown(sample)).toBe(sample);
+  });
 });

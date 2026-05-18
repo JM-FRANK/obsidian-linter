@@ -39,6 +39,19 @@ function shouldAddSpaceAfterInlineMath(line: string, nextIndex: number): boolean
   return !/\s/.test(nextChar) && !closingPunctuationRegex.test(nextChar);
 }
 
+function isCurrencyLikeDollar(line: string, index: number): boolean {
+  if (!/\d/.test(line[index + 1] ?? '')) {
+    return false;
+  }
+
+  let cursor = index + 1;
+  while (cursor < line.length && /[\d,.]/.test(line[cursor])) {
+    cursor++;
+  }
+
+  return cursor >= line.length || /[\s,.;:!?，。！？；：]/.test(line[cursor]);
+}
+
 function normalizeInlineMathSpacingInLine(line: string): string {
   if (!line.includes('$')) {
     return line;
@@ -47,9 +60,33 @@ function normalizeInlineMathSpacingInLine(line: string): string {
   let result = '';
 
   for (let i = 0; i < line.length; i++) {
+    if (line[i] === '`') {
+      const markerEnd = i + line.slice(i).match(/^`+/)[0].length;
+      const marker = line.slice(i, markerEnd);
+      const endIndex = line.indexOf(marker, markerEnd);
+      if (endIndex !== -1) {
+        result += line.slice(i, endIndex + marker.length);
+        i = endIndex + marker.length - 1;
+        continue;
+      }
+    }
+
+    if (line.startsWith('http://', i) || line.startsWith('https://', i) || line.startsWith('obsidian://', i)) {
+      const endIndex = line.slice(i).search(/\s/);
+      const tokenEnd = endIndex === -1 ? line.length : i + endIndex;
+      result += line.slice(i, tokenEnd);
+      i = tokenEnd - 1;
+      continue;
+    }
+
     if (line[i] === '$' && line[i + 1] === '$') {
       result += '$$';
       i++;
+      continue;
+    }
+
+    if (line[i] === '$' && isCurrencyLikeDollar(line, i)) {
+      result += line[i];
       continue;
     }
 
