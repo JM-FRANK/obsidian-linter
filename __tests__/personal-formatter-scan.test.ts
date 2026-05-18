@@ -17,6 +17,17 @@ function spansOfKind(text: string, kind: PersonalFormatterSpanKind) {
 }
 
 describe('personal formatter scanner', () => {
+  it('caches scan results for the same lines array in one format context', () => {
+    const lines = linesOf(dedent`
+      > [!note] Callout
+      > Content
+    `);
+    const context = createFormatContext();
+
+    expect(scanPersonalFormatterLines(lines, context)).toBe(scanPersonalFormatterLines(lines, context));
+    expect(scanPersonalFormatterLines([...lines], context)).not.toBe(scanPersonalFormatterLines(lines, context));
+  });
+
   it('detects YAML frontmatter only when it is closed at the top of the note', () => {
     const text = dedent`
       ---

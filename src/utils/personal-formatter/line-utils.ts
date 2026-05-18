@@ -1,5 +1,5 @@
 import {scanCodeFenceMask, scanMathBlockMask} from './scan';
-import {FormatContext} from './types';
+import {FormatContext, PersonalFormatterScanResult} from './types';
 
 export function linesOf(text: string): string[] {
   return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n+$/g, '').split('\n');
@@ -12,6 +12,7 @@ export function getCodeFenceMask(lines: string[], context: FormatContext): boole
 export function createFormatContext(): FormatContext {
   return {
     codeFenceMaskCache: new WeakMap<string[], boolean[]>(),
+    scanResultCache: new WeakMap<string[], PersonalFormatterScanResult>(),
     latexParseCache: new Map<string, unknown[] | null>(),
   };
 }

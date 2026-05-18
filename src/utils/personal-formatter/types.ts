@@ -11,6 +11,7 @@ export type CleanLatexBlock = {
 
 export type FormatContext = {
   codeFenceMaskCache: WeakMap<string[], boolean[]>;
+  scanResultCache: WeakMap<string[], PersonalFormatterScanResult>;
   latexParseCache: Map<string, unknown[] | null>;
 };
 

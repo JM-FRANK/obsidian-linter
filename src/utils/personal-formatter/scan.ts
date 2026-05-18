@@ -217,6 +217,11 @@ function scanCustomIgnoreSpans(lines: string[], codeFenceMask: boolean[]): Perso
 }
 
 export function scanPersonalFormatterLines(lines: string[], context: FormatContext): PersonalFormatterScanResult {
+  const cachedResult = context.scanResultCache.get(lines);
+  if (cachedResult) {
+    return cachedResult;
+  }
+
   const codeFenceMask = scanCodeFenceMask(lines, context);
   const mathBlockMask = scanMathBlockMask(lines);
   const spans = [
@@ -228,12 +233,15 @@ export function scanPersonalFormatterLines(lines: string[], context: FormatConte
     ...scanCustomIgnoreSpans(lines, codeFenceMask),
   ];
 
-  return {
+  const scanResult = {
     lines,
     spans,
     codeFenceMask,
     mathBlockMask,
   };
+
+  context.scanResultCache.set(lines, scanResult);
+  return scanResult;
 }
 
 export function findSpanStartingAt(scanResult: PersonalFormatterScanResult, kind: PersonalFormatterSpan['kind'], index: number): PersonalFormatterSpan | null {
