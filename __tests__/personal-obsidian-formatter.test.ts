@@ -928,6 +928,58 @@ describe('Personal Obsidian formatter behavior freeze', () => {
     expect(formatPersonalObsidianMarkdown(sample)).toBe(sample);
   });
 
+  it('protects YAML frontmatter from formatter modules', () => {
+    const sample = dedent`
+      ---
+      title: 这是$A_i$同时发生
+      formula: $$x + 1 = y$$
+      tags:
+        - #数学
+      ---
+      Body$B$正文
+    ` + '\n';
+
+    expect(formatPersonalObsidianMarkdown(sample)).toBe(dedent`
+      ---
+      title: 这是$A_i$同时发生
+      formula: $$x + 1 = y$$
+      tags:
+        - #数学
+      ---
+      Body $B$ 正文
+    ` + '\n');
+  });
+
+  it('protects custom linter ignore blocks from formatter modules', () => {
+    const sample = dedent`
+      <!-- linter-disable -->
+      这是$A_i$同时发生
+      $$
+      x
+      =
+      y
+      $$
+      > [!eg] Disabled
+      >
+      <!-- linter-enable -->
+      After$B$.
+    ` + '\n';
+
+    expect(formatPersonalObsidianMarkdown(sample)).toBe(dedent`
+      <!-- linter-disable -->
+      这是$A_i$同时发生
+      $$
+      x
+      =
+      y
+      $$
+      > [!eg] Disabled
+      >
+      <!-- linter-enable -->
+      After $B$.
+    ` + '\n');
+  });
+
   it('keeps callout math placement unchanged with explicit keep strategy', () => {
     const sample = dedent`
       > [!eg] Example title

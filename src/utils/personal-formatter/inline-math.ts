@@ -1,6 +1,7 @@
 import {closingPunctuationRegex, openingPunctuationRegex} from './constants';
 import {FormatContext} from './types';
 import {getCodeFenceMask, getMathBlockMask} from './line-utils';
+import {scanPersonalFormatterLines, scanSpanMask} from './scan';
 
 function isEscaped(text: string, index: number): boolean {
   let backslashCount = 0;
@@ -118,11 +119,12 @@ function normalizeInlineMathSpacingInLine(line: string): string {
 }
 
 export function normalizeInlineMathSpacing(lines: string[], context: FormatContext): string[] {
+  const protectedMask = scanSpanMask(scanPersonalFormatterLines(lines, context), ['yaml', 'customIgnore']);
   const codeMask = getCodeFenceMask(lines, context);
   const mathBlockMask = getMathBlockMask(lines);
 
   return lines.map((line, index) => {
-    if (codeMask[index] || mathBlockMask[index]) {
+    if (protectedMask[index] || codeMask[index] || mathBlockMask[index]) {
       return line;
     }
 

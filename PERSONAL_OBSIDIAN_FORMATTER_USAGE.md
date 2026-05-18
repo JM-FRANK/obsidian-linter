@@ -71,6 +71,13 @@ General tab 全局设置和普通 Linter 规则 UI 都已经使用三态下拉�
 - 旧 `move-math-into-callout: true` -> `move-into-callout`
 - 旧 `move-math-into-callout: false` -> `move-out-of-callout`
 
+Formatter 当前会保护这些结构，不在其中执行个人格式化模块：
+
+- fenced code block
+- YAML frontmatter
+- custom linter ignore block
+- block math 内部不会再套用行内数学空格规则
+
 ## 后续待处理风险
 
 第一阶段测试中曾保留的行内数学高风险点已经修复并纳入回归测试：

@@ -2,6 +2,7 @@ import {parseMath} from '@unified-latex/unified-latex-util-parse';
 import {calloutStartRegex} from './constants';
 import {CleanLatexBlock, FormatContext} from './types';
 import {getCodeFenceMask, headingLevel, isRecord, mathFencePrefix, stripBlockquotePrefixes} from './line-utils';
+import {scanPersonalFormatterLines, scanSpanMask} from './scan';
 
 function normalizeEquationSpacing(text: string): string {
   return text.replace(/\s*=\s*/g, ' = ').replace(/[ \t]{2,}/g, ' ').trim();
@@ -297,11 +298,12 @@ function normalizeMathBlockContent(content: string[], context: FormatContext): s
 }
 
 export function normalizeBlockMath(lines: string[], context: FormatContext): string[] {
+  const originalProtectedMask = scanSpanMask(scanPersonalFormatterLines(lines, context), ['codeFence', 'yaml', 'customIgnore']);
   const originalCodeMask = getCodeFenceMask(lines, context);
   const splitLines: string[] = [];
   let splitChangedLineCount = false;
   for (let i = 0; i < lines.length; i++) {
-    const parts = originalCodeMask[i] ? [lines[i]] : splitSingleMathFenceLine(lines[i]);
+    const parts = originalProtectedMask[i] ? [lines[i]] : splitSingleMathFenceLine(lines[i]);
     if (parts.length !== 1 || parts[0] !== lines[i]) {
       splitChangedLineCount = true;
     }
@@ -309,13 +311,16 @@ export function normalizeBlockMath(lines: string[], context: FormatContext): str
   }
 
   const codeMask = splitChangedLineCount ? getCodeFenceMask(splitLines, context) : originalCodeMask;
+  const protectedMask = splitChangedLineCount ?
+    scanSpanMask(scanPersonalFormatterLines(splitLines, context), ['codeFence', 'yaml', 'customIgnore']) :
+    originalProtectedMask;
   lines = splitChangedLineCount ? splitLines : lines;
   const result: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const trimmedLine = lines[i].trim();
 
-    if (!codeMask[i] && trimmedLine.startsWith('$$') && trimmedLine.endsWith('$$') && trimmedLine.length > 4) {
+    if (!protectedMask[i] && !codeMask[i] && trimmedLine.startsWith('$$') && trimmedLine.endsWith('$$') && trimmedLine.length > 4) {
       if (isListItemLine(lines[i])) {
         result.push(lines[i]);
       } else {
@@ -324,14 +329,18 @@ export function normalizeBlockMath(lines: string[], context: FormatContext): str
       continue;
     }
 
-    const currentMathFencePrefix = codeMask[i] ? null : mathFencePrefix(lines[i]);
+    const currentMathFencePrefix = protectedMask[i] || codeMask[i] ? null : mathFencePrefix(lines[i]);
     if (currentMathFencePrefix !== null) {
       const content: string[] = [];
       let endIndex = -1;
 
       for (let j = i + 1; j < lines.length; j++) {
-        if (!codeMask[j] && mathFencePrefix(lines[j]) === currentMathFencePrefix) {
+        if (!protectedMask[j] && !codeMask[j] && mathFencePrefix(lines[j]) === currentMathFencePrefix) {
           endIndex = j;
+          break;
+        }
+
+        if (protectedMask[j] || codeMask[j]) {
           break;
         }
 

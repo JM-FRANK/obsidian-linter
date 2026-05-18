@@ -239,3 +239,20 @@ export function scanPersonalFormatterLines(lines: string[], context: FormatConte
 export function findSpanStartingAt(scanResult: PersonalFormatterScanResult, kind: PersonalFormatterSpan['kind'], index: number): PersonalFormatterSpan | null {
   return scanResult.spans.find((span) => span.kind === kind && span.start === index) ?? null;
 }
+
+export function scanSpanMask(scanResult: PersonalFormatterScanResult, kinds: PersonalFormatterSpan['kind'][]): boolean[] {
+  const kindSet = new Set(kinds);
+  const mask = new Array(scanResult.lines.length).fill(false);
+
+  for (const span of scanResult.spans) {
+    if (!kindSet.has(span.kind)) {
+      continue;
+    }
+
+    for (let i = span.start; i <= span.end; i++) {
+      mask[i] = true;
+    }
+  }
+
+  return mask;
+}

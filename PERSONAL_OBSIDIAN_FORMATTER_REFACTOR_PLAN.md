@@ -217,7 +217,9 @@ Step 7: 更新 review 文档和 README，写清楚主入口与限制。
 5. 第五阶段：新增 `PERSONAL_OBSIDIAN_FORMATTER_USAGE.md`，明确一键命令为权威入口、普通规则为兼容入口，并记录冲突规则。
 6. 后续推进：`scan.ts` 已继续承接 table、callout、YAML frontmatter、custom ignore span 识别；spacing 模块已改为消费 table/callout span。
 7. 策略入口收敛：General tab 和普通 Linter 规则 UI 都已迁移为显式三态下拉，并保留旧 boolean 配置 fallback。
+8. 保护策略收敛：YAML frontmatter 和 custom linter ignore span 已接入 math、inline math、callout、spacing、heading 模块保护逻辑。
 
-未完成：
+后续可选优化：
 
-1. 将 YAML/custom ignore span 接入 formatter 模块的保护策略。
+1. 为 `scan.ts` 增加更细粒度的单元测试，覆盖嵌套/未闭合 custom ignore、frontmatter 边界和 callout/table 相邻场景。
+2. 继续把各模块的 scanner 查询收敛成更少的共享 helper，减少重复构造 scan result。

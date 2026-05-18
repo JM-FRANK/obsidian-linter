@@ -1,14 +1,15 @@
 import {FormatContext} from './types';
 import {getCodeFenceMask} from './line-utils';
-import {findSpanStartingAt, scanPersonalFormatterLines} from './scan';
+import {findSpanStartingAt, scanPersonalFormatterLines, scanSpanMask} from './scan';
 
 export function normalizeBasicLineCleanup(lines: string[], context: FormatContext): string[] {
+  const protectedMask = scanSpanMask(scanPersonalFormatterLines(lines, context), ['yaml', 'customIgnore']);
   const codeMask = getCodeFenceMask(lines, context);
   const result: string[] = [];
   let previousWasBlank = false;
 
   for (let i = 0; i < lines.length; i++) {
-    if (codeMask[i]) {
+    if (protectedMask[i] || codeMask[i]) {
       result.push(lines[i]);
       previousWasBlank = false;
       continue;
@@ -48,10 +49,11 @@ function pushSpacedBlock(result: string[], blockLines: string[]) {
 
 export function ensureTableAndCalloutSpacing(lines: string[], context: FormatContext): string[] {
   const scanResult = scanPersonalFormatterLines(lines, context);
+  const protectedMask = scanSpanMask(scanResult, ['yaml', 'customIgnore']);
   const codeMask = scanResult.codeFenceMask;
   const result: string[] = [];
   for (let i = 0; i < lines.length; i++) {
-    if (codeMask[i]) {
+    if (protectedMask[i] || codeMask[i]) {
       result.push(lines[i]);
       continue;
     }
