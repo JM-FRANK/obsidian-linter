@@ -43,6 +43,24 @@ yarn.lock
 !/.eslintrc.js
 !babel.config.js
 !postcss.config.js
+
+# local custom ignores
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+*.bak
+*.orig
+*.rej
+*.patch
+.cache/
+.tmp/
+tmp/
+temp/
+.codex/
+.agents/
+
 test-vault/6、吉田さんは来月中国へ行きます.md
 test-vault/Calc_L3、洛必达、泰勒麦克劳林展开、积分方法.md
 test-vault/personal-formatter-baselines/6、吉田さんは来月中国へ行きます.formatted.md

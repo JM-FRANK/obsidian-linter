@@ -163,10 +163,15 @@ function hasLatexEnvironment(nodes: unknown[]): boolean {
   return hasEnvironment;
 }
 
-function hasLatexLineBreaks(nodes: unknown[]): boolean {
+function isLineBreakAtOffset(source: string, start: number, end: number): boolean {
+  return source.slice(start, end).startsWith('\\\\') || source.slice(Math.max(0, end - 2), end) === '\\\\';
+}
+
+function hasLatexLineBreaks(source: string, nodes: unknown[]): boolean {
   let hasLineBreaks = false;
   visitLatexNodes(nodes, (node) => {
-    if (isLatexLineBreakNode(node)) {
+    const offsets = latexNodeOffsets(node);
+    if (isLatexLineBreakNode(node) && offsets && isLineBreakAtOffset(source, offsets.start, offsets.end)) {
       hasLineBreaks = true;
     }
   });
@@ -187,7 +192,7 @@ function splitLatexLineBreaksWithAst(line: string, context: FormatContext): stri
   const breakOffsets: number[] = [];
   visitLatexNodes(nodes, (node) => {
     const offsets = latexNodeOffsets(node);
-    if (isLatexLineBreakNode(node) && offsets) {
+    if (isLatexLineBreakNode(node) && offsets && isLineBreakAtOffset(line, offsets.start, offsets.end)) {
       breakOffsets.push(offsets.end);
     }
   });
@@ -331,7 +336,8 @@ function cleanLatexBlockContent(content: string[]): CleanLatexBlock {
 }
 
 function formatCleanLatexBlockContent(latexLines: string[], context: FormatContext): string[] {
-  const parsedContent = parseLatexMath(latexLines.join('\n'), context);
+  const joinedLatexContent = latexLines.join('\n');
+  const parsedContent = parseLatexMath(joinedLatexContent, context);
   if (!parsedContent) {
     return latexLines;
   }
@@ -341,13 +347,12 @@ function formatCleanLatexBlockContent(latexLines: string[], context: FormatConte
   }
 
   const hasLatexEnvironmentInAst = hasLatexEnvironment(parsedContent);
-  const hasLatexLineBreaksInAst = hasLatexLineBreaks(parsedContent);
+  const hasLatexLineBreaksInAst = hasLatexLineBreaks(joinedLatexContent, parsedContent);
   const hasLatexEnvironmentByRegex = latexLines.some((line) => /\\(?:begin|end)\{[^}]+\}/.test(line));
   const hasLatexLineBreaksByRegex = latexLines.some((line) => line.includes('\\\\'));
 
   if (hasLatexEnvironmentInAst || hasLatexEnvironmentByRegex) {
-    const joinedContent = latexLines.join('\n');
-    return splitLatexEnvironmentBoundariesWithAst(joinedContent, context) ??
+    return splitLatexEnvironmentBoundariesWithAst(joinedLatexContent, context) ??
       latexLines.flatMap((line) => splitLatexEnvironmentBoundariesWithRegex(line));
   }
 
@@ -595,12 +600,28 @@ function findMathBlockEndAtPrefix(lines: string[], codeMask: boolean[], startInd
   return -1;
 }
 
+function isInlineMathParagraphStart(line: string): boolean {
+  const trimmedLine = line.trim();
+  return trimmedLine.startsWith('$') && !trimmedLine.startsWith('$$') && findInlineMathEnd(trimmedLine, 0) !== -1;
+}
+
+function isInlineMathParagraphContinuation(line: string): boolean {
+  const trimmedLine = line.trim();
+  return trimmedLine !== '' &&
+    !trimmedLine.startsWith('>') &&
+    !isPlainMathFence(trimmedLine) &&
+    !calloutStartRegex.test(trimmedLine) &&
+    headingLevel(trimmedLine) === null &&
+    trimmedLine.includes('$');
+}
+
 function moveFollowingMathIntoCallout(lines: string[], context: FormatContext): string[] {
   const codeMask = getCodeFenceMask(lines, context);
+  const mathBlockMask = getMathBlockMask(lines);
   const result: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
-    if (codeMask[i] || !calloutStartRegex.test(lines[i])) {
+    if (codeMask[i] || mathBlockMask[i] || !calloutStartRegex.test(lines[i])) {
       result.push(lines[i]);
       continue;
     }
@@ -623,8 +644,19 @@ function moveFollowingMathIntoCallout(lines: string[], context: FormatContext): 
       }
 
       let mathStart = nextIndex;
-      while (mathStart < lines.length && !codeMask[mathStart] && lines[mathStart].trim() === '') {
-        mathStart++;
+      if (mathStart < lines.length && !codeMask[mathStart] && lines[mathStart].trim() === '') {
+        break;
+      }
+
+      if (isInlineMathParagraphStart(lines[mathStart])) {
+        while (mathStart < lines.length && !codeMask[mathStart] && isInlineMathParagraphContinuation(lines[mathStart])) {
+          calloutWithMathLines.push(moveMathLineIntoCallout(lines[mathStart]));
+          mathStart++;
+        }
+
+        movedMath = true;
+        nextIndex = mathStart;
+        continue;
       }
 
       const mathEnd = findPlainMathBlockEnd(lines, codeMask, mathStart);
@@ -733,6 +765,10 @@ function headingLevel(line: string): number | null {
   return match ? match[1].length : null;
 }
 
+function isTagOnlyLine(line: string): boolean {
+  return /^(?:#[^\s#]+)(?:\s+#[^\s#]+)*$/.test(line.trim());
+}
+
 function normalizeHeadingSpacing(lines: string[], context: FormatContext): string[] {
   const codeMask = getCodeFenceMask(lines, context);
   const result: string[] = [];
@@ -753,6 +789,7 @@ function normalizeHeadingSpacing(lines: string[], context: FormatContext): strin
 
     const line = lines[i];
     const lineHeadingLevel = headingLevel(line);
+    const lineIsTagOnly = isTagOnlyLine(line);
 
     if (line.trim() === '') {
       pendingBlank = true;
@@ -763,12 +800,15 @@ function normalizeHeadingSpacing(lines: string[], context: FormatContext): strin
       const previousLine = result[result.length - 1];
       const previousHeadingLevel = previousLine ? headingLevel(previousLine) : null;
       const previousIsHeading = previousHeadingLevel !== null;
-      const previousIsContent = previousLine !== undefined && previousLine.trim() !== '' && !previousIsHeading;
+      const previousIsTagOnly = previousLine !== undefined && isTagOnlyLine(previousLine);
+      const previousIsContent = previousLine !== undefined && previousLine.trim() !== '' && !previousIsHeading && !previousIsTagOnly;
 
       if (previousIsHeading) {
         pendingBlank = previousHeadingLevel > lineHeadingLevel;
       } else if (previousIsContent) {
         pendingBlank = currentContentHeadingLevel !== null && currentContentHeadingLevel !== lineHeadingLevel;
+      } else if (previousIsTagOnly) {
+        pendingBlank = false;
       }
 
       if (pendingBlank && result.length > 0) {
@@ -783,14 +823,16 @@ function normalizeHeadingSpacing(lines: string[], context: FormatContext): strin
 
     if (pendingBlank) {
       const previousLine = result[result.length - 1];
-      if (previousLine !== undefined && previousLine.trim() !== '' && headingLevel(previousLine) === null) {
+      if (previousLine !== undefined && previousLine.trim() !== '' && headingLevel(previousLine) === null && !isTagOnlyLine(previousLine)) {
         result.push('');
       }
     }
 
     result.push(line);
     pendingBlank = false;
-    currentContentHeadingLevel = latestHeadingLevel;
+    if (!lineIsTagOnly) {
+      currentContentHeadingLevel = latestHeadingLevel;
+    }
   }
 
   return result;
@@ -837,62 +879,73 @@ function isTableStart(lines: string[], codeMask: boolean[], index: number): bool
     isTableDelimiter(lines[index + 1]);
 }
 
-function pushLineWithAdjacentCalloutSpacing(result: string[], line: string, isCode: boolean) {
-  if (!isCode && calloutStartRegex.test(line)) {
-    let lastNonBlank = result.length - 1;
-    while (lastNonBlank >= 0 && result[lastNonBlank].trim() === '') {
-      lastNonBlank--;
-    }
-
-    if (lastNonBlank >= 0 && result[lastNonBlank].startsWith('>')) {
-      while (result.length > lastNonBlank + 1) {
-        result.pop();
-      }
-      result.push('');
-    }
+function pushSpacedBlock(result: string[], blockLines: string[]) {
+  while (result.length > 0 && result[result.length - 1].trim() === '') {
+    result.pop();
   }
 
-  result.push(line);
+  if (result.length > 0) {
+    result.push('');
+  }
+
+  result.push(...blockLines);
 }
 
-function ensureTableAndAdjacentCalloutSpacing(lines: string[], context: FormatContext): string[] {
+function ensureTableAndCalloutSpacing(lines: string[], context: FormatContext): string[] {
   const codeMask = getCodeFenceMask(lines, context);
+  const mathBlockMask = getMathBlockMask(lines);
   const result: string[] = [];
   for (let i = 0; i < lines.length; i++) {
-    if (!isTableStart(lines, codeMask, i)) {
-      pushLineWithAdjacentCalloutSpacing(result, lines[i], codeMask[i]);
+    if (codeMask[i]) {
+      result.push(lines[i]);
       continue;
     }
 
-    while (result.length > 0 && result[result.length - 1].trim() === '') {
-      result.pop();
-    }
-
-    if (result.length > 0) {
-      result.push('');
-    }
-
-    const tableLines: string[] = [lines[i], lines[i + 1]];
-    i += 2;
-    while (i < lines.length && !codeMask[i] && lines[i].includes('|') && hasUnescapedPipe(lines[i]) && lines[i].trim() !== '') {
-      tableLines.push(lines[i]);
+    if (!mathBlockMask[i] && calloutStartRegex.test(lines[i])) {
+      const calloutLines: string[] = [lines[i]];
       i++;
+      while (i < lines.length && !codeMask[i] && lines[i].startsWith('>') && !calloutStartRegex.test(lines[i])) {
+        calloutLines.push(lines[i]);
+        i++;
+      }
+
+      pushSpacedBlock(result, calloutLines);
+      while (i < lines.length && lines[i].trim() === '') {
+        i++;
+      }
+
+      if (i < lines.length) {
+        result.push('');
+        i--;
+      } else {
+        i--;
+      }
+      continue;
     }
 
-    for (const tableLine of tableLines) {
-      result.push(tableLine);
+    if (!mathBlockMask[i] && isTableStart(lines, codeMask, i)) {
+      const tableLines: string[] = [lines[i], lines[i + 1]];
+      i += 2;
+      while (i < lines.length && !codeMask[i] && lines[i].includes('|') && hasUnescapedPipe(lines[i]) && lines[i].trim() !== '') {
+        tableLines.push(lines[i]);
+        i++;
+      }
+
+      pushSpacedBlock(result, tableLines);
+      while (i < lines.length && lines[i].trim() === '') {
+        i++;
+      }
+
+      if (i < lines.length) {
+        result.push('');
+        i--;
+      } else {
+        i--;
+      }
+      continue;
     }
 
-    while (i < lines.length && lines[i].trim() === '') {
-      i++;
-    }
-
-    if (i < lines.length) {
-      result.push('');
-      i--;
-    } else {
-      i--;
-    }
+    result.push(lines[i]);
   }
 
   return result;
@@ -911,7 +964,7 @@ export function formatPersonalObsidianMarkdown(text: string, options: PersonalOb
   }
   lines = normalizeBasicLineCleanup(lines, context);
   lines = normalizeHeadingSpacing(lines, context);
-  lines = ensureTableAndAdjacentCalloutSpacing(lines, context);
+  lines = ensureTableAndCalloutSpacing(lines, context);
 
   while (lines.length > 0 && lines[0].trim() === '') {
     lines.shift();

@@ -68,6 +68,35 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'Callout blocks keep one blank line before and after',
+      before: dedent`
+        Before
+        > [!eg] A
+        > Content
+        After
+        ${''}
+        ${''}
+        > [!note] B
+        > Content
+        ${''}
+        ${''}
+        After again
+      `,
+      after: dedent`
+        Before
+        ${''}
+        > [!eg] A
+        > Content
+        ${''}
+        After
+        ${''}
+        > [!note] B
+        > Content
+        ${''}
+        After again
+      ` + '\n',
+    },
+    {
       testName: 'Ruby syntax remains unchanged',
       before: dedent`
         Here is {漢字|かんじ}.
@@ -138,6 +167,46 @@ ruleTest({
         \\sin^2 x + \\cos^2 x = 1 \\\\
         1 + \\tan^2 x = \\frac{1}{\\cos^2 x} = \\sec^2 x
         \\end{cases}
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'LaTeX cdot commands are not treated as line breaks',
+      before: dedent`
+        $$
+        \\begin{aligned}
+        &=
+        \\begin{cases}
+        \\displaystyle
+        \\frac{(n-1)(n-3) \\cdots 3\\cdot 1}
+        \\end{cases}
+        \\end{aligned}
+        $$
+      `,
+      after: dedent`
+        $$
+        \\begin{aligned}
+        &=
+        \\begin{cases}
+        \\displaystyle
+        \\frac{(n-1)(n-3) \\cdots 3\\cdot 1}
+        \\end{cases}
+        \\end{aligned}
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'LaTeX cdot commands do not prevent simple equation normalization',
+      before: dedent`
+        $$
+        x
+        \\cdot
+        y
+        $$
+      `,
+      after: dedent`
+        $$
+        x \\cdot y
         $$
       ` + '\n',
     },
@@ -227,6 +296,51 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'Block math separated from callout by a blank line stays outside callout',
+      before: dedent`
+        > [!eg] Example title
+        > Content
+
+        $$
+        x + 1 = y
+        $$
+      `,
+      after: dedent`
+        > [!eg] Example title
+        > Content
+
+        $$
+        x + 1 = y
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'Inline math paragraph immediately after callout moves into callout',
+      before: dedent`
+        > [!warning] 双无穷区间不能直接合并极限
+        $\\displaystyle \\int_{-\\infty}^{+\\infty}f(x)\\,dx$ 收敛，要求左右两边分别收敛。
+        不能只算 $\\displaystyle \\lim_{A\\to\\infty}\\int_{-A}^{A}f(x)\\,dx$。
+      `,
+      after: dedent`
+        > [!warning] 双无穷区间不能直接合并极限
+        > $\\displaystyle \\int_{-\\infty}^{+\\infty}f(x)\\,dx$ 收敛，要求左右两边分别收敛。
+        > 不能只算 $\\displaystyle \\lim_{A\\to\\infty}\\int_{-A}^{A}f(x)\\,dx$。
+      ` + '\n',
+    },
+    {
+      testName: 'Inline math paragraph separated from callout by a blank line stays outside callout',
+      before: dedent`
+        > [!warning] 双无穷区间不能直接合并极限
+
+        $\\displaystyle \\int_{-\\infty}^{+\\infty}f(x)\\,dx$ 收敛，要求左右两边分别收敛。
+      `,
+      after: dedent`
+        > [!warning] 双无穷区间不能直接合并极限
+
+        $\\displaystyle \\int_{-\\infty}^{+\\infty}f(x)\\,dx$ 收敛，要求左右两边分别收敛。
+      ` + '\n',
+    },
+    {
       testName: 'Multiple block math sections after a callout move into the callout in one pass',
       before: dedent`
         > [!eg] Example title
@@ -250,7 +364,7 @@ ruleTest({
       ` + '\n',
     },
     {
-      testName: 'Multiple block math sections after a callout move with blank lines between them',
+      testName: 'Math sections separated by blank lines do not continue moving into callout',
       before: dedent`
         > [!eg] Example title
         > Content
@@ -269,9 +383,10 @@ ruleTest({
         > $$
         > x + 1 = y
         > $$
-        > $$
-        > z + 1 = w
-        > $$
+
+        $$
+        z + 1 = w
+        $$
         Outside
       ` + '\n',
     },
@@ -299,6 +414,7 @@ ruleTest({
         > $$
         > z + 1 = w
         > $$
+
         Outside
       ` + '\n',
     },
@@ -344,6 +460,7 @@ ruleTest({
         > [!important] 方向性
         > 定积分不仅看“面积大小”，也看积分方向。
         > 从 $a$ 到 $b$ 与从 $b$ 到 $a$ 的路径方向相反，所以符号相反。
+
         ### 6.4.3 区间可加性 若 $c$ 在 $a,b$ 之间，则
         $$
         \\int_a^b f(x)\\,dx = \\int_a^c f(x)\\,dx+\\int_c^b f(x)\\,dx.
@@ -364,6 +481,23 @@ ruleTest({
         > [!important] 方向性
         > 定积分不仅看“面积大小”，也看积分方向。
         ### 6.4.3 区间可加性
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'Callout syntax inside block math does not get callout spacing',
+      before: dedent`
+        $$
+        > [!warning] 双无穷区间不能直接合并极限
+        $\\displaystyle \\int_{-\\infty}^{+\\infty}f(x)\\,dx$ 收敛，要求左右两边分别收敛。
+        不能只算 $\\displaystyle \\lim_{A\\to\\infty}\\int_{-A}^{A}f(x)\\,dx$。
+        $$
+      `,
+      after: dedent`
+        $$
+        > [!warning] 双无穷区间不能直接合并极限
+        $\\displaystyle \\int_{-\\infty}^{+\\infty}f(x)\\,dx$ 收敛，要求左右两边分别收敛。
+        不能只算 $\\displaystyle \\lim_{A\\to\\infty}\\int_{-A}^{A}f(x)\\,dx$。
         $$
       ` + '\n',
     },
@@ -468,6 +602,7 @@ ruleTest({
         > $$
         > x = y
         > $$
+
         Outside
       ` + '\n',
     },
@@ -492,6 +627,7 @@ ruleTest({
       before: dedent`
         > [!eg] Example title
         > Content
+
         $$
         x + 1 = y
         $$
@@ -499,6 +635,7 @@ ruleTest({
       after: dedent`
         > [!eg] Example title
         > Content
+
         $$
         x + 1 = y
         $$
@@ -520,6 +657,7 @@ ruleTest({
       after: dedent`
         > [!eg] Example title
         > Content
+
         $$
         x + 1 = y
         $$
@@ -544,6 +682,7 @@ ruleTest({
       after: dedent`
         > [!eg] Example title
         > Content
+
         $$
         x + 1 = y
         $$
@@ -560,6 +699,7 @@ ruleTest({
       before: dedent`
         > [!eg] Example title
         > Content
+
         Ordinary text
         $$
         x + 1 = y
@@ -568,6 +708,7 @@ ruleTest({
       after: dedent`
         > [!eg] Example title
         > Content
+
         Ordinary text
         $$
         x + 1 = y
@@ -634,6 +775,35 @@ ruleTest({
         # 标题4
         ## 标题5
         正文
+      ` + '\n',
+    },
+    {
+      testName: 'Tag-only lines do not count as heading block content',
+      before: dedent`
+        # 3 最大公约数算法
+        #算法
+        ${''}
+        ## 3.1 最大公约数的定义
+        正文
+        ${''}
+        ## 3.2 嵌套标签
+        #数学/微积分
+        ${''}
+        ## 3.3 多个标签
+        #数学/微积分 #算法
+        ${''}
+        ### 3.3.1 子标题
+      `,
+      after: dedent`
+        # 3 最大公约数算法
+        #算法
+        ## 3.1 最大公约数的定义
+        正文
+        ## 3.2 嵌套标签
+        #数学/微积分
+        ## 3.3 多个标签
+        #数学/微积分 #算法
+        ### 3.3.1 子标题
       ` + '\n',
     },
   ],
