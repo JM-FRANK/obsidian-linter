@@ -112,6 +112,69 @@ function scanCalloutSpans(lines: string[], codeFenceMask: boolean[], mathBlockMa
   return spans;
 }
 
+function hasUnescapedPipe(line: string): boolean {
+  let inRuby = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '\\') {
+      i++;
+      continue;
+    }
+
+    if (char === '{') {
+      inRuby = true;
+      continue;
+    }
+
+    if (char === '}') {
+      inRuby = false;
+      continue;
+    }
+
+    if (char === '|' && !inRuby) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isTableDelimiter(line: string): boolean {
+  return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+}
+
+function isTableStart(lines: string[], codeFenceMask: boolean[], mathBlockMask: boolean[], index: number): boolean {
+  return index + 1 < lines.length &&
+    !codeFenceMask[index] &&
+    !codeFenceMask[index + 1] &&
+    !mathBlockMask[index] &&
+    lines[index].includes('|') &&
+    hasUnescapedPipe(lines[index]) &&
+    isTableDelimiter(lines[index + 1]);
+}
+
+function scanTableSpans(lines: string[], codeFenceMask: boolean[], mathBlockMask: boolean[]): PersonalFormatterSpan[] {
+  const spans: PersonalFormatterSpan[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!isTableStart(lines, codeFenceMask, mathBlockMask, i)) {
+      continue;
+    }
+
+    const start = i;
+    i += 2;
+    while (i < lines.length && !codeFenceMask[i] && lines[i].includes('|') && hasUnescapedPipe(lines[i]) && lines[i].trim() !== '') {
+      i++;
+    }
+
+    spans.push({kind: 'table', start, end: i - 1});
+    i--;
+  }
+
+  return spans;
+}
+
 export function scanPersonalFormatterLines(lines: string[], context: FormatContext): PersonalFormatterScanResult {
   const codeFenceMask = scanCodeFenceMask(lines, context);
   const mathBlockMask = scanMathBlockMask(lines);
@@ -119,6 +182,7 @@ export function scanPersonalFormatterLines(lines: string[], context: FormatConte
     ...scanMaskSpans('codeFence', codeFenceMask),
     ...scanMaskSpans('mathBlock', mathBlockMask),
     ...scanCalloutSpans(lines, codeFenceMask, mathBlockMask),
+    ...scanTableSpans(lines, codeFenceMask, mathBlockMask),
   ];
 
   return {
@@ -127,4 +191,8 @@ export function scanPersonalFormatterLines(lines: string[], context: FormatConte
     codeFenceMask,
     mathBlockMask,
   };
+}
+
+export function findSpanStartingAt(scanResult: PersonalFormatterScanResult, kind: PersonalFormatterSpan['kind'], index: number): PersonalFormatterSpan | null {
+  return scanResult.spans.find((span) => span.kind === kind && span.start === index) ?? null;
 }

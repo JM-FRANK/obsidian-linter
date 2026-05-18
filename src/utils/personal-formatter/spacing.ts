@@ -1,6 +1,6 @@
-import {calloutStartRegex} from './constants';
 import {FormatContext} from './types';
-import {getCodeFenceMask, getMathBlockMask} from './line-utils';
+import {getCodeFenceMask} from './line-utils';
+import {findSpanStartingAt, scanPersonalFormatterLines} from './scan';
 
 export function normalizeBasicLineCleanup(lines: string[], context: FormatContext): string[] {
   const codeMask = getCodeFenceMask(lines, context);
@@ -34,47 +34,6 @@ export function normalizeBasicLineCleanup(lines: string[], context: FormatContex
   return result;
 }
 
-function hasUnescapedPipe(line: string): boolean {
-  let inRuby = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '\\') {
-      i++;
-      continue;
-    }
-
-    if (char === '{') {
-      inRuby = true;
-      continue;
-    }
-
-    if (char === '}') {
-      inRuby = false;
-      continue;
-    }
-
-    if (char === '|' && !inRuby) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function isTableDelimiter(line: string): boolean {
-  return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
-}
-
-function isTableStart(lines: string[], codeMask: boolean[], index: number): boolean {
-  return index + 1 < lines.length &&
-    !codeMask[index] &&
-    !codeMask[index + 1] &&
-    lines[index].includes('|') &&
-    hasUnescapedPipe(lines[index]) &&
-    isTableDelimiter(lines[index + 1]);
-}
-
 function pushSpacedBlock(result: string[], blockLines: string[]) {
   while (result.length > 0 && result[result.length - 1].trim() === '') {
     result.pop();
@@ -88,8 +47,8 @@ function pushSpacedBlock(result: string[], blockLines: string[]) {
 }
 
 export function ensureTableAndCalloutSpacing(lines: string[], context: FormatContext): string[] {
-  const codeMask = getCodeFenceMask(lines, context);
-  const mathBlockMask = getMathBlockMask(lines);
+  const scanResult = scanPersonalFormatterLines(lines, context);
+  const codeMask = scanResult.codeFenceMask;
   const result: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     if (codeMask[i]) {
@@ -97,13 +56,10 @@ export function ensureTableAndCalloutSpacing(lines: string[], context: FormatCon
       continue;
     }
 
-    if (!mathBlockMask[i] && calloutStartRegex.test(lines[i])) {
-      const calloutLines: string[] = [lines[i]];
-      i++;
-      while (i < lines.length && !codeMask[i] && lines[i].startsWith('>') && !calloutStartRegex.test(lines[i])) {
-        calloutLines.push(lines[i]);
-        i++;
-      }
+    const calloutSpan = findSpanStartingAt(scanResult, 'callout', i);
+    if (calloutSpan) {
+      const calloutLines = lines.slice(calloutSpan.start, calloutSpan.end + 1);
+      i = calloutSpan.end + 1;
 
       pushSpacedBlock(result, calloutLines);
       while (i < lines.length && lines[i].trim() === '') {
@@ -119,13 +75,10 @@ export function ensureTableAndCalloutSpacing(lines: string[], context: FormatCon
       continue;
     }
 
-    if (!mathBlockMask[i] && isTableStart(lines, codeMask, i)) {
-      const tableLines: string[] = [lines[i], lines[i + 1]];
-      i += 2;
-      while (i < lines.length && !codeMask[i] && lines[i].includes('|') && hasUnescapedPipe(lines[i]) && lines[i].trim() !== '') {
-        tableLines.push(lines[i]);
-        i++;
-      }
+    const tableSpan = findSpanStartingAt(scanResult, 'table', i);
+    if (tableSpan) {
+      const tableLines = lines.slice(tableSpan.start, tableSpan.end + 1);
+      i = tableSpan.end + 1;
 
       pushSpacedBlock(result, tableLines);
       while (i < lines.length && lines[i].trim() === '') {
