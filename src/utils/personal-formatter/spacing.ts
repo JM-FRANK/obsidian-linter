@@ -1,9 +1,9 @@
 import {FormatContext} from './types';
 import {getCodeFenceMask} from './line-utils';
-import {findSpanStartingAt, scanPersonalFormatterLines, scanSpanMask} from './scan';
+import {findSpanStartingAt, scanPersonalFormatterLines, scanProtectedLineMask, scanSpanMask} from './scan';
 
 export function normalizeBasicLineCleanup(lines: string[], context: FormatContext): string[] {
-  const protectedMask = scanSpanMask(scanPersonalFormatterLines(lines, context), ['yaml', 'customIgnore']);
+  const protectedMask = scanProtectedLineMask(lines, context);
   const codeMask = getCodeFenceMask(lines, context);
   const result: string[] = [];
   let previousWasBlank = false;

@@ -1,9 +1,9 @@
 import {FormatContext} from './types';
 import {getCodeFenceMask, headingLevel, isTagOnlyLine} from './line-utils';
-import {scanPersonalFormatterLines, scanSpanMask} from './scan';
+import {scanProtectedLineMask} from './scan';
 
 export function normalizePersonalHeadingSpacing(lines: string[], context: FormatContext): string[] {
-  const protectedMask = scanSpanMask(scanPersonalFormatterLines(lines, context), ['yaml', 'customIgnore']);
+  const protectedMask = scanProtectedLineMask(lines, context);
   const codeMask = getCodeFenceMask(lines, context);
   const result: string[] = [];
   let currentContentHeadingLevel: number | null = null;

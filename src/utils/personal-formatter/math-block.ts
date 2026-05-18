@@ -2,7 +2,7 @@ import {parseMath} from '@unified-latex/unified-latex-util-parse';
 import {calloutStartRegex} from './constants';
 import {CleanLatexBlock, FormatContext} from './types';
 import {getCodeFenceMask, headingLevel, isRecord, mathFencePrefix, stripBlockquotePrefixes} from './line-utils';
-import {scanPersonalFormatterLines, scanSpanMask} from './scan';
+import {scanProtectedLineMask} from './scan';
 
 function normalizeEquationSpacing(text: string): string {
   return text.replace(/\s*=\s*/g, ' = ').replace(/[ \t]{2,}/g, ' ').trim();
@@ -298,12 +298,12 @@ function normalizeMathBlockContent(content: string[], context: FormatContext): s
 }
 
 export function normalizeBlockMath(lines: string[], context: FormatContext): string[] {
-  const originalProtectedMask = scanSpanMask(scanPersonalFormatterLines(lines, context), ['codeFence', 'yaml', 'customIgnore']);
+  const originalProtectedMask = scanProtectedLineMask(lines, context);
   const originalCodeMask = getCodeFenceMask(lines, context);
   const splitLines: string[] = [];
   let splitChangedLineCount = false;
   for (let i = 0; i < lines.length; i++) {
-    const parts = originalProtectedMask[i] ? [lines[i]] : splitSingleMathFenceLine(lines[i]);
+    const parts = originalProtectedMask[i] || originalCodeMask[i] ? [lines[i]] : splitSingleMathFenceLine(lines[i]);
     if (parts.length !== 1 || parts[0] !== lines[i]) {
       splitChangedLineCount = true;
     }
@@ -312,7 +312,7 @@ export function normalizeBlockMath(lines: string[], context: FormatContext): str
 
   const codeMask = splitChangedLineCount ? getCodeFenceMask(splitLines, context) : originalCodeMask;
   const protectedMask = splitChangedLineCount ?
-    scanSpanMask(scanPersonalFormatterLines(splitLines, context), ['codeFence', 'yaml', 'customIgnore']) :
+    scanProtectedLineMask(splitLines, context) :
     originalProtectedMask;
   lines = splitChangedLineCount ? splitLines : lines;
   const result: string[] = [];

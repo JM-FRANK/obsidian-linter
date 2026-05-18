@@ -197,11 +197,11 @@ function isCustomIgnoreEnd(line: string): boolean {
   return /<!--\s*linter-enable\s*-->|%%\s*linter-enable\s*%%/.test(line);
 }
 
-function scanCustomIgnoreSpans(lines: string[]): PersonalFormatterSpan[] {
+function scanCustomIgnoreSpans(lines: string[], codeFenceMask: boolean[]): PersonalFormatterSpan[] {
   const spans: PersonalFormatterSpan[] = [];
 
   for (let i = 0; i < lines.length; i++) {
-    if (!isCustomIgnoreStart(lines[i])) {
+    if (codeFenceMask[i] || !isCustomIgnoreStart(lines[i])) {
       continue;
     }
 
@@ -225,7 +225,7 @@ export function scanPersonalFormatterLines(lines: string[], context: FormatConte
     ...scanMaskSpans('mathBlock', mathBlockMask),
     ...scanCalloutSpans(lines, codeFenceMask, mathBlockMask),
     ...scanTableSpans(lines, codeFenceMask, mathBlockMask),
-    ...scanCustomIgnoreSpans(lines),
+    ...scanCustomIgnoreSpans(lines, codeFenceMask),
   ];
 
   return {
@@ -255,4 +255,8 @@ export function scanSpanMask(scanResult: PersonalFormatterScanResult, kinds: Per
   }
 
   return mask;
+}
+
+export function scanProtectedLineMask(lines: string[], context: FormatContext): boolean[] {
+  return scanSpanMask(scanPersonalFormatterLines(lines, context), ['yaml', 'customIgnore']);
 }

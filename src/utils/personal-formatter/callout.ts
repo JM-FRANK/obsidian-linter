@@ -2,7 +2,7 @@ import {calloutStartRegex} from './constants';
 import {FormatContext} from './types';
 import {findInlineMathEnd} from './inline-math';
 import {getCodeFenceMask, getMathBlockMask, headingLevel, mathFencePrefix, stripBlockquotePrefixes} from './line-utils';
-import {scanPersonalFormatterLines, scanSpanMask} from './scan';
+import {scanProtectedLineMask} from './scan';
 
 function isPlainMathFence(line: string): boolean {
   return line.trim() === '$$';
@@ -64,7 +64,7 @@ function isInlineMathParagraphContinuation(line: string): boolean {
 }
 
 export function moveFollowingMathIntoCallout(lines: string[], context: FormatContext): string[] {
-  const protectedMask = scanSpanMask(scanPersonalFormatterLines(lines, context), ['yaml', 'customIgnore']);
+  const protectedMask = scanProtectedLineMask(lines, context);
   const codeMask = getCodeFenceMask(lines, context);
   const mathBlockMask = getMathBlockMask(lines);
   const result: string[] = [];
@@ -139,7 +139,7 @@ function isBlockquoteLineAtDepth(line: string, depth: number): boolean {
 }
 
 export function moveMathOutOfCallouts(lines: string[], context: FormatContext): string[] {
-  const protectedMask = scanSpanMask(scanPersonalFormatterLines(lines, context), ['yaml', 'customIgnore']);
+  const protectedMask = scanProtectedLineMask(lines, context);
   const codeMask = getCodeFenceMask(lines, context);
   const result: string[] = [];
 
