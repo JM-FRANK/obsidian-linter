@@ -129,8 +129,18 @@ export class GeneralTab extends Tab {
     tempDiv = this.contentEl.createDiv();
     this.addSettingSearchInfoForGeneralSettings(new NumberInputSetting(tempDiv, 'tabs.general.number-of-dollar-signs-to-indicate-math-block.name', 'tabs.general.number-of-dollar-signs-to-indicate-math-block.description', 'commonStyles.minimumNumberOfDollarSignsToBeAMathBlock', this.plugin));
 
+    const personalFormatterMathPlacementDropdownRecordInfo: DropdownRecordInfo = {
+      isForEnum: false,
+      values: ['move-into-callout', 'keep', 'move-out-of-callout'],
+      descriptions: [
+        getTextInLanguage('tabs.general.personal-formatter-math-placement.options.move-into-callout'),
+        getTextInLanguage('tabs.general.personal-formatter-math-placement.options.keep'),
+        getTextInLanguage('tabs.general.personal-formatter-math-placement.options.move-out-of-callout'),
+      ],
+    };
+
     tempDiv = this.contentEl.createDiv();
-    this.addSettingSearchInfoForGeneralSettings(new ToggleSetting(tempDiv, 'tabs.general.personal-formatter-move-math-into-callout.name', 'tabs.general.personal-formatter-move-math-into-callout.description', 'commonStyles.personalFormatterMoveMathIntoCallout', this.plugin));
+    this.addSettingSearchInfoForGeneralSettings(new DropdownSetting(tempDiv, 'tabs.general.personal-formatter-math-placement.name', 'tabs.general.personal-formatter-math-placement.description', 'commonStyles.personalFormatterMathPlacement', this.plugin, personalFormatterMathPlacementDropdownRecordInfo));
 
     const folderIgnoreEl = this.contentEl.createDiv();
     const folderIgnore = new FolderIgnoreOption(folderIgnoreEl, this.plugin.settings.foldersToIgnore, this.app, () => {

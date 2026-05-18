@@ -66,7 +66,7 @@ moveMathIntoCallout?: boolean;
 - `true` -> `move-into-callout`
 - `false` -> `move-out-of-callout`，用于保持历史行为
 
-注意：普通 Linter 规则 UI 和 General tab 全局开关仍使用旧 boolean。后续如果需要暴露给界面，应把它们迁移为三态下拉。
+General tab 全局设置已经使用三态下拉。普通 Linter 规则 UI 暂时仍使用旧 boolean，作为兼容入口保留。
 
 ## 后续待处理风险
 

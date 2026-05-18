@@ -4,6 +4,7 @@ import {CustomReplace} from './ui/linter-components/custom-replace-option';
 import {FileToIgnore} from './ui/linter-components/files-to-ignore-option';
 import {NestedKeyOf} from './utils/nested-keyof';
 import {NormalArrayFormats, QuoteCharacter, SpecialArrayFormats, TagSpecificArrayFormats} from './utils/yaml';
+import {CalloutMathPlacement} from './utils/personal-formatter/types';
 
 // CommonStyles are settings that are used in multiple places and thus need to be external to rules themselves to help facilitate their use
 export type CommonStyles = {
@@ -12,7 +13,8 @@ export type CommonStyles = {
   minimumNumberOfDollarSignsToBeAMathBlock: number;
   escapeCharacter: QuoteCharacter;
   removeUnnecessaryEscapeCharsForMultiLineArrays: boolean;
-  personalFormatterMoveMathIntoCallout: boolean;
+  personalFormatterMoveMathIntoCallout?: boolean;
+  personalFormatterMathPlacement: CalloutMathPlacement;
 }
 
 export enum AfterFileChangeLintTimes {
@@ -76,5 +78,6 @@ export const DEFAULT_SETTINGS: Partial<LinterSettings> = {
     escapeCharacter: '"',
     removeUnnecessaryEscapeCharsForMultiLineArrays: false,
     personalFormatterMoveMathIntoCallout: true,
+    personalFormatterMathPlacement: 'move-into-callout',
   },
 };

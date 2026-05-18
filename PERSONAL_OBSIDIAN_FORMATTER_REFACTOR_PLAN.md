@@ -220,4 +220,4 @@ Step 7: 更新 review 文档和 README，写清楚主入口与限制。
 未完成：
 
 1. 将 YAML/custom ignore span 接入 formatter 模块的保护策略。
-2. 将普通 Linter 规则 UI 和 General tab 全局开关从 boolean 迁移为显式三态下拉。
+2. 将普通 Linter 规则 UI 从 boolean 迁移为显式三态下拉。

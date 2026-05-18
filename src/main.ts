@@ -21,6 +21,7 @@ import {CustomAutoCorrectContent} from './ui/linter-components/auto-correct-file
 import {ChangeSpec} from '@codemirror/state';
 import {downloadMisspellings, readInMisspellingsFile} from './utils/auto-correct-misspellings';
 import {formatPersonalObsidianMarkdown} from './utils/personal-obsidian-formatter';
+import {CalloutMathPlacement} from './utils/personal-formatter/types';
 import {DiffPreviewView, diffPreviewViewType} from './ui/views/diff-preview-view';
 
 // https://github.com/liamcain/obsidian-calendar-ui/blob/03ceecbf6d88ef260dadf223ee5e483d98d24ffc/src/localization.ts#L20-L43
@@ -734,7 +735,7 @@ export default class LinterPlugin extends Plugin {
   async runPersonalObsidianFormatterEditor(editor: Editor, file: TFile = this.app.workspace.getActiveFile()) {
     const oldText = editor.getValue();
     const newText = formatPersonalObsidianMarkdown(oldText, {
-      moveMathIntoCallout: this.settings.commonStyles.personalFormatterMoveMathIntoCallout ?? true,
+      mathPlacement: this.getPersonalFormatterMathPlacement(),
     });
     this.applyEditorTextChange(oldText, newText, editor, file);
   }
@@ -742,10 +743,15 @@ export default class LinterPlugin extends Plugin {
   async previewPersonalObsidianFormatterEditor(editor: Editor, file: TFile = this.app.workspace.getActiveFile()) {
     const oldText = editor.getValue();
     const newText = formatPersonalObsidianMarkdown(oldText, {
-      moveMathIntoCallout: this.settings.commonStyles.personalFormatterMoveMathIntoCallout ?? true,
+      mathPlacement: this.getPersonalFormatterMathPlacement(),
     });
 
     void this.openDiffPreview(getTextInLanguage('notice-text.personal-formatter-preview-title'), oldText, newText, editor, file);
+  }
+
+  private getPersonalFormatterMathPlacement(): CalloutMathPlacement {
+    return this.settings.commonStyles.personalFormatterMathPlacement ??
+      ((this.settings.commonStyles.personalFormatterMoveMathIntoCallout ?? true) ? 'move-into-callout' : 'move-out-of-callout');
   }
 
   private async openDiffPreview(title: string, oldText: string, newText: string, editor: Editor, file: TFile) {

@@ -249,6 +249,15 @@ export default {
         'name': 'Personal formatter: move following math into callouts',
         'description': 'When using the personal one-click formatter, immediately following block math is moved into the preceding Obsidian callout.',
       },
+      'personal-formatter-math-placement': {
+        'name': 'Personal formatter: callout math placement',
+        'description': 'Controls how the personal one-click formatter handles math blocks next to Obsidian callouts.',
+        'options': {
+          'move-into-callout': 'Move following math into callouts',
+          'keep': 'Keep math where it is',
+          'move-out-of-callout': 'Move callout math out of callouts',
+        },
+      },
     },
     'debug': {
       // debug-tab.ts
