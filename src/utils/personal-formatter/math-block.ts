@@ -51,6 +51,10 @@ function stripTrailingSentencePunctuationFromLatexLines(lines: string[]): string
   return result;
 }
 
+function linesEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((line, index) => line === right[index]);
+}
+
 function parseLatexMath(source: string, context: FormatContext): unknown[] | null {
   source = source.trim();
   if (source === '') {
@@ -301,36 +305,51 @@ function cleanLatexBlockContent(content: string[]): CleanLatexBlock {
 }
 
 function formatCleanLatexBlockContent(latexLines: string[], context: FormatContext): string[] {
-  const joinedLatexContent = latexLines.join('\n');
-  const parsedContent = parseLatexMath(joinedLatexContent, context);
+  let workingLatexLines = latexLines;
+  let joinedLatexContent = workingLatexLines.join('\n');
+  let parsedContent = parseLatexMath(joinedLatexContent, context);
+
   if (!parsedContent) {
-    return stripTrailingSentencePunctuationFromLatexLines(latexLines);
+    const strippedLatexLines = stripTrailingSentencePunctuationFromLatexLines(latexLines);
+    if (!linesEqual(strippedLatexLines, latexLines)) {
+      const strippedLatexContent = strippedLatexLines.join('\n');
+      const strippedParsedContent = parseLatexMath(strippedLatexContent, context);
+      if (strippedParsedContent) {
+        workingLatexLines = strippedLatexLines;
+        joinedLatexContent = strippedLatexContent;
+        parsedContent = strippedParsedContent;
+      }
+    }
   }
 
-  if (latexLines.length === 0) {
+  if (!parsedContent) {
+    return stripTrailingSentencePunctuationFromLatexLines(workingLatexLines);
+  }
+
+  if (workingLatexLines.length === 0) {
     return [];
   }
 
   const hasLatexEnvironmentInAst = hasLatexEnvironment(parsedContent);
   const hasLatexLineBreaksInAst = hasLatexLineBreaks(joinedLatexContent, parsedContent);
-  const hasLatexEnvironmentByRegex = latexLines.some((line) => /\\(?:begin|end)\{[^}]+\}/.test(line));
-  const hasLatexLineBreaksByRegex = latexLines.some((line) => line.includes('\\\\'));
+  const hasLatexEnvironmentByRegex = workingLatexLines.some((line) => /\\(?:begin|end)\{[^}]+\}/.test(line));
+  const hasLatexLineBreaksByRegex = workingLatexLines.some((line) => line.includes('\\\\'));
 
   if (hasLatexEnvironmentInAst || hasLatexEnvironmentByRegex) {
     return stripTrailingSentencePunctuationFromLatexLines(
         splitLatexEnvironmentBoundariesWithAst(joinedLatexContent, context) ??
-        latexLines.flatMap((line) => splitLatexEnvironmentBoundariesWithRegex(line)),
+        workingLatexLines.flatMap((line) => splitLatexEnvironmentBoundariesWithRegex(line)),
     );
   }
 
   if (hasLatexLineBreaksInAst || hasLatexLineBreaksByRegex) {
-    return stripTrailingSentencePunctuationFromLatexLines(latexLines.flatMap((line) => {
+    return stripTrailingSentencePunctuationFromLatexLines(workingLatexLines.flatMap((line) => {
       const lineBreakParts = splitLatexLineBreaksWithAst(line, context) ?? splitLatexLineBreaksWithRegex(line);
       return lineBreakParts;
     }));
   }
 
-  return stripTrailingSentencePunctuationFromLatexLines([normalizeEquationSpacing(latexLines.join(' '))]);
+  return stripTrailingSentencePunctuationFromLatexLines([normalizeEquationSpacing(workingLatexLines.join(' '))]);
 }
 
 function normalizeMathBlockContent(content: string[], context: FormatContext): string[] {
