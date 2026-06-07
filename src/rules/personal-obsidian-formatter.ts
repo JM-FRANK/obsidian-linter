@@ -6,7 +6,6 @@ import {CalloutMathPlacement} from '../utils/personal-formatter/types';
 
 class PersonalObsidianFormatterOptions implements Options {
   mathPlacement: CalloutMathPlacement = 'move-into-callout';
-  moveMathIntoCallout?: boolean = true;
 }
 
 @RuleBuilder.register
@@ -37,7 +36,6 @@ export default class PersonalObsidianFormatter extends RuleBuilder<PersonalObsid
   apply(text: string, options: PersonalObsidianFormatterOptions): string {
     return formatPersonalObsidianMarkdown(text, {
       mathPlacement: options.mathPlacement,
-      moveMathIntoCallout: options.moveMathIntoCallout,
     });
   }
 

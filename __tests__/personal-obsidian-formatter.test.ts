@@ -248,6 +248,48 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'LaTeX trailing punctuation cleanup preserves decimals text and ellipses',
+      before: dedent`
+        $$
+        \\begin{aligned}
+        x &= 3.14\\\\
+        y &= \\text{e.g. value}\\\\
+        z &= \\cdots
+        \\end{aligned}
+        $$
+      `,
+      after: dedent`
+        $$
+        \\begin{aligned}
+        x &= 3.14\\\\
+        y &= \\text{e.g. value}\\\\
+        z &= \\cdots
+        \\end{aligned}
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'Callout LaTeX trailing sentence punctuation is removed',
+      before: dedent`
+        > [!eg] Example
+        > $$
+        > \\begin{aligned}
+        > x &= y,\\\\
+        > z &= w.
+        > \\end{aligned}
+        > $$
+      `,
+      after: dedent`
+        > [!eg] Example
+        > $$
+        > \\begin{aligned}
+        > x &= y\\\\
+        > z &= w
+        > \\end{aligned}
+        > $$
+      ` + '\n',
+    },
+    {
       testName: 'LaTeX environment boundaries are moved to their own lines in block math',
       before: dedent`
         $$
@@ -392,6 +434,23 @@ ruleTest({
         $$
         x_$i$
         $$
+      ` + '\n',
+    },
+    {
+      testName: 'Inline math punctuation boundaries stay tight while prose boundaries get spaces',
+      before: dedent`
+        文本，$x$文本
+        文本$x$。文本
+        文本:$x$;文本
+        文本[$x$]文本
+        文本|$x$|文本
+      `,
+      after: dedent`
+        文本，$x$ 文本
+        文本 $x$。文本
+        文本:$x$;文本
+        文本[ $x$ ]文本
+        文本| $x$ |文本
       ` + '\n',
     },
     {
@@ -1109,6 +1168,25 @@ describe('Personal Obsidian formatter behavior freeze', () => {
     ` + '\n');
   });
 
+  it('cleans trailing math punctuation while keeping explicit keep strategy placement', () => {
+    const sample = dedent`
+      > [!eg] Example title
+      > Content
+      $$
+      x = y.
+      $$
+    ` + '\n';
+
+    expect(formatPersonalObsidianMarkdown(sample, {mathPlacement: 'keep'})).toBe(dedent`
+      > [!eg] Example title
+      > Content
+
+      $$
+      x = y
+      $$
+    ` + '\n');
+  });
+
   it('moves callout math out with explicit move-out strategy', () => {
     const sample = dedent`
       > [!eg] Example title
@@ -1125,6 +1203,27 @@ describe('Personal Obsidian formatter behavior freeze', () => {
 
       $$
       x + 1 = y
+      $$
+      > More content
+    ` + '\n');
+  });
+
+  it('cleans trailing math punctuation after explicit move-out strategy', () => {
+    const sample = dedent`
+      > [!eg] Example title
+      > Content
+      > $$
+      > x = y.
+      > $$
+      > More content
+    ` + '\n';
+
+    expect(formatPersonalObsidianMarkdown(sample, {mathPlacement: 'move-out-of-callout'})).toBe(dedent`
+      > [!eg] Example title
+      > Content
+
+      $$
+      x = y
       $$
       > More content
     ` + '\n');

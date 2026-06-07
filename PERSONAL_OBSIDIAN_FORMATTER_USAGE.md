@@ -85,3 +85,26 @@ Formatter 当前会保护这些结构，不在其中执行个人格式化模块�
 - 保护行内 code span，避免其中的 `$...$` 被行内数学空格规则修改。
 - 保护 URL query string，避免 `$` 被误判。
 - 保护货币金额，避免 `$5` 一类内容被误判。
+
+## 测试入口
+
+个人 formatter 修改后，优先运行：
+
+```bash
+npm run test:personal-formatter
+```
+
+这个入口覆盖：
+
+- 个人 formatter 主行为回归。
+- scanner 回归。
+- profile / legacy 配置映射回归。
+- 真实笔记 baseline 回归。
+
+发布或大范围重构前运行完整验证：
+
+```bash
+npm run test:full
+```
+
+`test:full` 会依次执行生产构建、文档生成、ESLint 检查和完整 Jest 单元测试。它使用 `lint:check`，不会像 `npm run lint` 那样自动修复文件。
