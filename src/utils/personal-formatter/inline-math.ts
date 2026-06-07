@@ -1,4 +1,4 @@
-import {closingPunctuationRegex, openingPunctuationRegex} from './constants';
+import {punctuationRegex} from './constants';
 import {FormatContext} from './types';
 import {getCodeFenceMask, getMathBlockMask} from './line-utils';
 import {scanProtectedLineMask} from './scan';
@@ -28,7 +28,7 @@ function shouldAddSpaceBeforeInlineMath(text: string): boolean {
   }
 
   const previousChar = text[text.length - 1];
-  return !/\s/.test(previousChar) && !openingPunctuationRegex.test(previousChar);
+  return !/\s/.test(previousChar) && !punctuationRegex.test(previousChar);
 }
 
 function shouldAddSpaceAfterInlineMath(line: string, nextIndex: number): boolean {
@@ -37,7 +37,7 @@ function shouldAddSpaceAfterInlineMath(line: string, nextIndex: number): boolean
   }
 
   const nextChar = line[nextIndex];
-  return !/\s/.test(nextChar) && !closingPunctuationRegex.test(nextChar);
+  return !/\s/.test(nextChar) && !punctuationRegex.test(nextChar);
 }
 
 function isCurrencyLikeDollar(line: string, index: number): boolean {
