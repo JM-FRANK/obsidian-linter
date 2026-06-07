@@ -391,6 +391,7 @@ ruleTest({
         文本$x = z$。文本。
         文本:$x = a$;文本。
         文本（$x = b$）文本。
+        这说明逆矩阵可以把“由 $\\boldsymbol x$ 求 $\\boldsymbol b$”反过来变成“由 $\\boldsymbol b$ 求 $\\boldsymbol x$”。
         文本[$x = c$]文本。
         > 对 $n\\times n$ 方阵 $A$，若 $A\\boldsymbol x=\\boldsymbol0$ 有非零解，则 $A$ 的列向量线性相关，$A$ 不可逆。
         > [!info] $x = y$题目
@@ -407,6 +408,7 @@ ruleTest({
         文本 $x = z$。文本。
         文本:$x = a$;文本。
         文本（$x = b$）文本。
+        这说明逆矩阵可以把“由 $\\boldsymbol x$ 求 $\\boldsymbol b$”反过来变成“由 $\\boldsymbol b$ 求 $\\boldsymbol x$”。
         文本[ $x = c$ ]文本。
         > 对 $n\\times n$ 方阵 $A$，若 $A\\boldsymbol x=\\boldsymbol0$ 有非零解，则 $A$ 的列向量线性相关，$A$ 不可逆。
 
