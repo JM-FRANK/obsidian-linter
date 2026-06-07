@@ -8,6 +8,49 @@ function normalizeEquationSpacing(text: string): string {
   return text.replace(/\s*=\s*/g, ' = ').replace(/[ \t]{2,}/g, ' ').trim();
 }
 
+function isEscapedAt(text: string, index: number): boolean {
+  let backslashCount = 0;
+  for (let i = index - 1; i >= 0 && text[i] === '\\'; i--) {
+    backslashCount++;
+  }
+
+  return backslashCount % 2 === 1;
+}
+
+function stripTrailingSentencePunctuationFromLatexLine(line: string): string | null {
+  const trimmedLine = line.trimEnd();
+  if (/^[,.]$/.test(trimmedLine)) {
+    return null;
+  }
+
+  const lineBreakMatch = trimmedLine.match(/\\\\$/);
+  const contentEnd = lineBreakMatch ? trimmedLine.length - lineBreakMatch[0].length : trimmedLine.length;
+  let punctuationIndex = contentEnd - 1;
+  while (punctuationIndex >= 0 && /\s/.test(trimmedLine[punctuationIndex])) {
+    punctuationIndex--;
+  }
+
+  if (punctuationIndex < 0 || !/[,.]/.test(trimmedLine[punctuationIndex]) || isEscapedAt(trimmedLine, punctuationIndex)) {
+    return trimmedLine;
+  }
+
+  const beforePunctuation = trimmedLine.slice(0, punctuationIndex).trimEnd();
+  const afterPunctuation = trimmedLine.slice(punctuationIndex + 1).trimStart();
+  return `${beforePunctuation}${afterPunctuation}`;
+}
+
+function stripTrailingSentencePunctuationFromLatexLines(lines: string[]): string[] {
+  const result: string[] = [];
+  for (const line of lines) {
+    const strippedLine = stripTrailingSentencePunctuationFromLatexLine(line);
+    if (strippedLine !== null) {
+      result.push(strippedLine);
+    }
+  }
+
+  return result;
+}
+
 function parseLatexMath(source: string, context: FormatContext): unknown[] | null {
   source = source.trim();
   if (source === '') {
@@ -261,7 +304,7 @@ function formatCleanLatexBlockContent(latexLines: string[], context: FormatConte
   const joinedLatexContent = latexLines.join('\n');
   const parsedContent = parseLatexMath(joinedLatexContent, context);
   if (!parsedContent) {
-    return latexLines;
+    return stripTrailingSentencePunctuationFromLatexLines(latexLines);
   }
 
   if (latexLines.length === 0) {
@@ -274,18 +317,20 @@ function formatCleanLatexBlockContent(latexLines: string[], context: FormatConte
   const hasLatexLineBreaksByRegex = latexLines.some((line) => line.includes('\\\\'));
 
   if (hasLatexEnvironmentInAst || hasLatexEnvironmentByRegex) {
-    return splitLatexEnvironmentBoundariesWithAst(joinedLatexContent, context) ??
-      latexLines.flatMap((line) => splitLatexEnvironmentBoundariesWithRegex(line));
+    return stripTrailingSentencePunctuationFromLatexLines(
+        splitLatexEnvironmentBoundariesWithAst(joinedLatexContent, context) ??
+        latexLines.flatMap((line) => splitLatexEnvironmentBoundariesWithRegex(line)),
+    );
   }
 
   if (hasLatexLineBreaksInAst || hasLatexLineBreaksByRegex) {
-    return latexLines.flatMap((line) => {
+    return stripTrailingSentencePunctuationFromLatexLines(latexLines.flatMap((line) => {
       const lineBreakParts = splitLatexLineBreaksWithAst(line, context) ?? splitLatexLineBreaksWithRegex(line);
       return lineBreakParts;
-    });
+    }));
   }
 
-  return [normalizeEquationSpacing(latexLines.join(' '))];
+  return stripTrailingSentencePunctuationFromLatexLines([normalizeEquationSpacing(latexLines.join(' '))]);
 }
 
 function normalizeMathBlockContent(content: string[], context: FormatContext): string[] {

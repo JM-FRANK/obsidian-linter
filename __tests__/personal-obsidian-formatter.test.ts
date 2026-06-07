@@ -205,6 +205,49 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'LaTeX environment trailing sentence punctuation is removed',
+      before: dedent`
+        $$
+        \\begin{aligned}
+        A^{-1}A\\boldsymbol x&=A^{-1}\\boldsymbol b,\\\\
+        I\\boldsymbol x&=A^{-1}\\boldsymbol b,\\\\
+        \\boldsymbol x&=A^{-1}\\boldsymbol b.
+        \\end{aligned}
+        $$
+      `,
+      after: dedent`
+        $$
+        \\begin{aligned}
+        A^{-1}A\\boldsymbol x&=A^{-1}\\boldsymbol b\\\\
+        I\\boldsymbol x&=A^{-1}\\boldsymbol b\\\\
+        \\boldsymbol x&=A^{-1}\\boldsymbol b
+        \\end{aligned}
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'Standalone LaTeX sentence punctuation lines are removed',
+      before: dedent`
+        $$
+        \\boldsymbol v=
+        \\begin{bmatrix}
+        1\\\\
+        2
+        \\end{bmatrix}
+        .
+        $$
+      `,
+      after: dedent`
+        $$
+        \\boldsymbol v=
+        \\begin{bmatrix}
+        1\\\\
+        2
+        \\end{bmatrix}
+        $$
+      ` + '\n',
+    },
+    {
       testName: 'LaTeX environment boundaries are moved to their own lines in block math',
       before: dedent`
         $$
@@ -514,7 +557,7 @@ ruleTest({
 
         ### 6.4.3 区间可加性 若 $c$ 在 $a,b$ 之间，则
         $$
-        \\int_a^b f(x)\\,dx = \\int_a^c f(x)\\,dx+\\int_c^b f(x)\\,dx.
+        \\int_a^b f(x)\\,dx = \\int_a^c f(x)\\,dx+\\int_c^b f(x)\\,dx
         $$
       ` + '\n',
     },
@@ -630,7 +673,7 @@ ruleTest({
         > \\begin{aligned}
         > \\int x \\,d\\sin x
         > &=x\\sin x-\\int \\sin x\\,dx \\\\
-        > &=x\\sin x+\\cos x+C.
+        > &=x\\sin x+\\cos x+C
         > \\end{aligned}
         > $$
       ` + '\n',
