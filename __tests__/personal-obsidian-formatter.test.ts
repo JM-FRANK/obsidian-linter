@@ -103,6 +103,51 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'Callout followed by a code fence without a blank line stays tight',
+      before: dedent`
+        > [!eg] A
+        > Content
+        \`\`\`c
+        node *temp = c;
+        a->next = c->next;
+        free(temp);
+        \`\`\`
+      `,
+      after: dedent`
+        > [!eg] A
+        > Content
+        \`\`\`c
+        node *temp = c;
+        a->next = c->next;
+        free(temp);
+        \`\`\`
+      ` + '\n',
+    },
+    {
+      testName: 'Callout followed by a code fence with blank lines keeps one blank line',
+      before: dedent`
+        > [!eg] A
+        > Content
+
+
+        \`\`\`c
+        node *temp = c;
+        a->next = c->next;
+        free(temp);
+        \`\`\`
+      `,
+      after: dedent`
+        > [!eg] A
+        > Content
+
+        \`\`\`c
+        node *temp = c;
+        a->next = c->next;
+        free(temp);
+        \`\`\`
+      ` + '\n',
+    },
+    {
       testName: 'Ruby syntax remains unchanged',
       before: dedent`
         Here is {漢字|かんじ}.

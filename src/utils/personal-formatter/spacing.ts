@@ -1,4 +1,4 @@
-import {FormatContext} from './types';
+import {FormatContext, PersonalFormatterScanResult, PersonalFormatterSpan} from './types';
 import {getCodeFenceMask} from './line-utils';
 import {findBlockStartingAt, scanPersonalFormatterLines, scanProtectedLineMask} from './scan';
 
@@ -47,6 +47,23 @@ function pushSpacedBlock(result: string[], blockLines: string[]) {
   result.push(...blockLines);
 }
 
+function findSpanStartingAt(scanResult: PersonalFormatterScanResult, index: number, kind: PersonalFormatterSpan['kind']): PersonalFormatterSpan | null {
+  return scanResult.spans.find((span) => span.kind === kind && span.start === index) ?? null;
+}
+
+function shouldKeepTightCalloutCodeFenceSpacing(lines: string[], scanResult: PersonalFormatterScanResult, blockSpan: PersonalFormatterSpan): boolean {
+  if (blockSpan.kind !== 'callout') {
+    return false;
+  }
+
+  const nextIndex = blockSpan.end + 1;
+  if (nextIndex >= lines.length || lines[nextIndex].trim() === '') {
+    return false;
+  }
+
+  return findSpanStartingAt(scanResult, nextIndex, 'codeFence') !== null;
+}
+
 export function ensureTableAndCalloutSpacing(lines: string[], context: FormatContext): string[] {
   const scanResult = scanPersonalFormatterLines(lines, context);
   const protectedMask = scanProtectedLineMask(lines, context);
@@ -61,6 +78,7 @@ export function ensureTableAndCalloutSpacing(lines: string[], context: FormatCon
     const blockSpan = findBlockStartingAt(scanResult, i);
     if (blockSpan) {
       const blockLines = lines.slice(blockSpan.start, blockSpan.end + 1);
+      const keepTightCalloutCodeFenceSpacing = shouldKeepTightCalloutCodeFenceSpacing(lines, scanResult, blockSpan);
       i = blockSpan.end + 1;
 
       pushSpacedBlock(result, blockLines);
@@ -69,7 +87,9 @@ export function ensureTableAndCalloutSpacing(lines: string[], context: FormatCon
       }
 
       if (i < lines.length) {
-        result.push('');
+        if (!keepTightCalloutCodeFenceSpacing) {
+          result.push('');
+        }
         i--;
       } else {
         i--;
