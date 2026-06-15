@@ -17,13 +17,21 @@ function isEscapedAt(text: string, index: number): boolean {
   return backslashCount % 2 === 1;
 }
 
-function stripTrailingSentencePunctuationFromLatexLine(line: string): string | null {
+function isClosingLatexEnvironmentLine(line: string): boolean {
+  return /^\\end\{[^}]+\}$/.test(line);
+}
+
+function stripTrailingSentencePunctuationFromLatexLine(line: string, isRenderedLineEnd: boolean): string | null {
   const trimmedLine = line.trimEnd();
-  if (/^[,.]$/.test(trimmedLine)) {
+  if (isRenderedLineEnd && /^[,.]$/.test(trimmedLine)) {
     return null;
   }
 
   const lineBreakMatch = trimmedLine.match(/\\\\$/);
+  if (!lineBreakMatch && !isRenderedLineEnd) {
+    return trimmedLine;
+  }
+
   const contentEnd = lineBreakMatch ? trimmedLine.length - lineBreakMatch[0].length : trimmedLine.length;
   let punctuationIndex = contentEnd - 1;
   while (punctuationIndex >= 0 && /\s/.test(trimmedLine[punctuationIndex])) {
@@ -40,18 +48,14 @@ function stripTrailingSentencePunctuationFromLatexLine(line: string): string | n
 }
 
 function stripTrailingSentencePunctuationFromLatexLines(lines: string[]): string[] {
+  const lineParts = lines.flatMap((line) => line.split(/\r?\n/).map((linePart) => linePart.trim()).filter((linePart) => linePart !== ''));
   const result: string[] = [];
-  for (const line of lines) {
-    for (const linePart of line.split(/\r?\n/)) {
-      const trimmedLinePart = linePart.trim();
-      if (trimmedLinePart === '') {
-        continue;
-      }
-
-      const strippedLine = stripTrailingSentencePunctuationFromLatexLine(trimmedLinePart);
-      if (strippedLine !== null) {
-        result.push(strippedLine);
-      }
+  for (let i = 0; i < lineParts.length; i++) {
+    const isRenderedLineEnd = i === lineParts.length - 1 || lineParts.slice(i + 1).every(isClosingLatexEnvironmentLine);
+    const strippedLine = stripTrailingSentencePunctuationFromLatexLine(lineParts[i], isRenderedLineEnd);
+    if (strippedLine !== null) {
+      result.push(strippedLine);
+      continue;
     }
   }
 

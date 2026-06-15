@@ -248,6 +248,85 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'Standalone LaTeX comma between expressions is preserved',
+      before: dedent`
+        $$
+        A=
+        \\begin{bmatrix}
+        1&2&3\\\\
+        4&5&6
+        \\end{bmatrix}
+        ,
+        \\quad
+        A^T=
+        \\begin{bmatrix}
+        1&4\\\\
+        2&5\\\\
+        3&6
+        \\end{bmatrix}
+        $$
+      `,
+      after: dedent`
+        $$
+        A=
+        \\begin{bmatrix}
+        1&2&3\\\\
+        4&5&6
+        \\end{bmatrix}
+        ,
+        \\quad
+        A^T=
+        \\begin{bmatrix}
+        1&4\\\\
+        2&5\\\\
+        3&6
+        \\end{bmatrix}
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'LaTeX punctuation before rendered line breaks is removed',
+      before: dedent`
+        $$
+        \\begin{aligned}
+        x = 1 , \\\\
+        y = 1 \\\\
+        z = y.
+        \\end{aligned}
+        $$
+      `,
+      after: dedent`
+        $$
+        \\begin{aligned}
+        x = 1\\\\
+        y = 1 \\\\
+        z = y
+        \\end{aligned}
+        $$
+      ` + '\n',
+    },
+    {
+      testName: 'LaTeX punctuation at physical line end is preserved when the rendered line continues',
+      before: dedent`
+        $$
+        \\begin{aligned}
+        x = 1 ,
+        y = 1 \\\\
+        z = y
+        \\end{aligned}
+        $$
+      `,
+      after: dedent`
+        $$
+        \\begin{aligned}
+        x = 1 ,
+        y = 1 \\\\
+        z = y
+        \\end{aligned}
+        $$
+      ` + '\n',
+    },
+    {
       testName: 'LaTeX trailing punctuation cleanup preserves decimals text and ellipses',
       before: dedent`
         $$
@@ -842,7 +921,7 @@ ruleTest({
         > 3&4\\\\
         > 5&6
         > \\end{vmatrix}
-        > }
+        > },
         > \\quad
         > x_2=
         > \\frac{
