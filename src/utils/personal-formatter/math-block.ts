@@ -42,9 +42,16 @@ function stripTrailingSentencePunctuationFromLatexLine(line: string): string | n
 function stripTrailingSentencePunctuationFromLatexLines(lines: string[]): string[] {
   const result: string[] = [];
   for (const line of lines) {
-    const strippedLine = stripTrailingSentencePunctuationFromLatexLine(line);
-    if (strippedLine !== null) {
-      result.push(strippedLine);
+    for (const linePart of line.split(/\r?\n/)) {
+      const trimmedLinePart = linePart.trim();
+      if (trimmedLinePart === '') {
+        continue;
+      }
+
+      const strippedLine = stripTrailingSentencePunctuationFromLatexLine(trimmedLinePart);
+      if (strippedLine !== null) {
+        result.push(strippedLine);
+      }
     }
   }
 
@@ -152,6 +159,15 @@ function topLevelLatexEnvironmentNodes(nodes: unknown[]): unknown[] {
   return nodes.filter(isLatexEnvironmentNode);
 }
 
+function pushTrimmedNonEmptyLines(parts: string[], value: string) {
+  for (const linePart of value.split(/\r?\n/)) {
+    const trimmedPart = linePart.trim();
+    if (trimmedPart !== '') {
+      parts.push(trimmedPart);
+    }
+  }
+}
+
 function splitLatexLineBreaksWithAst(line: string, context: FormatContext): string[] | null {
   const nodes = parseLatexMath(line, context);
   if (!nodes) {
@@ -215,7 +231,7 @@ function splitLatexEnvironmentBoundariesWithAst(line: string, context: FormatCon
 
     const before = line.slice(cursor, offsets.start).trim();
     if (before !== '') {
-      parts.push(before);
+      pushTrimmedNonEmptyLines(parts, before);
     }
 
     const segment = line.slice(offsets.start, offsets.end);
@@ -239,7 +255,7 @@ function splitLatexEnvironmentBoundariesWithAst(line: string, context: FormatCon
 
   const after = line.slice(cursor).trim();
   if (after !== '') {
-    parts.push(after);
+    pushTrimmedNonEmptyLines(parts, after);
   }
 
   return parts;

@@ -762,6 +762,104 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'Existing callout matrix block keeps quote prefixes between LaTeX environments',
+      before: dedent`
+        > [!eg] Matrix equation
+        > $$
+        > \\boldsymbol A=
+        > \\begin{bmatrix}
+        > 1&2\\\\
+        > 5&6
+        > \\end{bmatrix}
+        > ,\\quad
+        > \\boldsymbol b=
+        > \\begin{bmatrix}
+        > 2\\\\
+        > 4
+        > \\end{bmatrix}
+        > $$
+      `,
+      after: dedent`
+        > [!eg] Matrix equation
+        > $$
+        > \\boldsymbol A=
+        > \\begin{bmatrix}
+        > 1&2\\\\
+        > 5&6
+        > \\end{bmatrix}
+        > ,\\quad
+        > \\boldsymbol b=
+        > \\begin{bmatrix}
+        > 2\\\\
+        > 4
+        > \\end{bmatrix}
+        > $$
+      ` + '\n',
+    },
+    {
+      testName: 'Existing callout fraction block keeps quote prefixes for nested LaTeX environments',
+      before: dedent`
+        > [!eg] Cramer rule
+        > $$
+        > x_1=
+        > \\frac{
+        > \\begin{vmatrix}
+        > 2&4\\\\
+        > 4&6
+        > \\end{vmatrix}
+        > }{
+        > \\begin{vmatrix}
+        > 3&4\\\\
+        > 5&6
+        > \\end{vmatrix}
+        > },
+        > \\quad
+        > x_2=
+        > \\frac{
+        > \\begin{vmatrix}
+        > 3&2\\\\
+        > 5&4
+        > \\end{vmatrix}
+        > }{
+        > \\begin{vmatrix}
+        > 3&4\\\\
+        > 5&6
+        > \\end{vmatrix}
+        > }
+        > $$
+      `,
+      after: dedent`
+        > [!eg] Cramer rule
+        > $$
+        > x_1=
+        > \\frac{
+        > \\begin{vmatrix}
+        > 2&4\\\\
+        > 4&6
+        > \\end{vmatrix}
+        > }{
+        > \\begin{vmatrix}
+        > 3&4\\\\
+        > 5&6
+        > \\end{vmatrix}
+        > }
+        > \\quad
+        > x_2=
+        > \\frac{
+        > \\begin{vmatrix}
+        > 3&2\\\\
+        > 5&4
+        > \\end{vmatrix}
+        > }{
+        > \\begin{vmatrix}
+        > 3&4\\\\
+        > 5&6
+        > \\end{vmatrix}
+        > }
+        > $$
+      ` + '\n',
+    },
+    {
       testName: 'Callout math fences with uneven spacing close at the same quote depth',
       before: dedent`
         > [!eg] Example title
