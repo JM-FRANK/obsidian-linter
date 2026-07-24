@@ -977,6 +977,79 @@ ruleTest({
       ` + '\n',
     },
     {
+      testName: 'Callout tables keep one blank quote line before them',
+      before: dedent`
+        > [!eg] Cache state
+        > Access order
+        >
+        > | Access | H/M | State |
+        > |--------|-----|-------|
+        > | 1      | M   | 1     |
+      `,
+      after: dedent`
+        > [!eg] Cache state
+        > Access order
+        >
+        > | Access | H/M | State |
+        > |--------|-----|-------|
+        > | 1      | M   | 1     |
+      ` + '\n',
+    },
+    {
+      testName: 'Callout tables get a missing blank quote line before them',
+      before: dedent`
+        > [!eg] Cache state
+        > Access order
+        > | Access | H/M | State |
+        > |--------|-----|-------|
+        > | 1      | M   | 1     |
+      `,
+      after: dedent`
+        > [!eg] Cache state
+        > Access order
+        >
+        > | Access | H/M | State |
+        > |--------|-----|-------|
+        > | 1      | M   | 1     |
+      ` + '\n',
+    },
+    {
+      testName: 'Callout tables collapse multiple blank quote lines before them',
+      before: dedent`
+        > [!eg] Cache state
+        > Access order
+        >
+        >
+        > | Access | H/M | State |
+        > |--------|-----|-------|
+        > | 1      | M   | 1     |
+      `,
+      after: dedent`
+        > [!eg] Cache state
+        > Access order
+        >
+        > | Access | H/M | State |
+        > |--------|-----|-------|
+        > | 1      | M   | 1     |
+      ` + '\n',
+    },
+    {
+      testName: 'Quoted tables get a missing blank quote line before them',
+      before: dedent`
+        > Quoted content
+        > | A | B |
+        > |---|---|
+        > | 1 | 2 |
+      `,
+      after: dedent`
+        > Quoted content
+        >
+        > | A | B |
+        > |---|---|
+        > | 1 | 2 |
+      ` + '\n',
+    },
+    {
       testName: 'Block math immediately after callout stays outside callout when disabled',
       before: dedent`
         > [!eg] Example title
@@ -1249,6 +1322,14 @@ describe('Personal Obsidian formatter behavior freeze', () => {
 
       Here is {漢字|かんじ}.
       $D$开头。
+    `,
+    dedent`
+      > [!eg] Cache state
+      > Access order
+      >
+      > | Access | H/M | State |
+      > |--------|-----|-------|
+      > | 1      | M   | 1     |
     `,
   ];
 

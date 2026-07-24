@@ -1,10 +1,18 @@
 import {FormatContext, PersonalFormatterScanResult, PersonalFormatterSpan} from './types';
 import {getCodeFenceMask} from './line-utils';
-import {findBlockStartingAt, scanPersonalFormatterLines, scanProtectedLineMask} from './scan';
+import {findBlockStartingAt, scanPersonalFormatterLines, scanSpanMask} from './scan';
 
 export function normalizeBasicLineCleanup(lines: string[], context: FormatContext): string[] {
-  const protectedMask = scanProtectedLineMask(lines, context);
+  const scanResult = scanPersonalFormatterLines(lines, context);
+  const protectedMask = scanSpanMask(scanResult, ['yaml', 'customIgnore']);
   const codeMask = getCodeFenceMask(lines, context);
+  const quotedTableDepthByStart = new Map<number, number>();
+  for (const span of scanResult.spans) {
+    const blockquoteDepth = span.meta?.blockquoteDepth;
+    if (span.kind === 'table' && typeof blockquoteDepth === 'number' && blockquoteDepth > 0) {
+      quotedTableDepthByStart.set(span.start, blockquoteDepth);
+    }
+  }
   const result: string[] = [];
   let previousWasBlank = false;
 
@@ -18,6 +26,12 @@ export function normalizeBasicLineCleanup(lines: string[], context: FormatContex
     const line = lines[i].replace(/[ \t]+$/g, '');
     if (/^(>\s*)+$/.test(line.trim())) {
       continue;
+    }
+
+    const quotedTableDepth = quotedTableDepthByStart.get(i);
+    if (quotedTableDepth !== undefined) {
+      result.push('> '.repeat(quotedTableDepth).trimEnd());
+      previousWasBlank = false;
     }
 
     if (line.trim() === '') {
@@ -66,7 +80,7 @@ function shouldKeepTightCalloutCodeFenceSpacing(lines: string[], scanResult: Per
 
 export function ensureTableAndCalloutSpacing(lines: string[], context: FormatContext): string[] {
   const scanResult = scanPersonalFormatterLines(lines, context);
-  const protectedMask = scanProtectedLineMask(lines, context);
+  const protectedMask = scanSpanMask(scanResult, ['yaml', 'customIgnore']);
   const codeMask = scanResult.codeFenceMask;
   const result: string[] = [];
   for (let i = 0; i < lines.length; i++) {

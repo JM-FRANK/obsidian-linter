@@ -144,31 +144,51 @@ function isTableDelimiter(line: string): boolean {
   return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
 }
 
-function isTableStart(lines: string[], codeFenceMask: boolean[], mathBlockMask: boolean[], index: number): boolean {
-  return index + 1 < lines.length &&
+function splitBlockquoteLine(line: string): {content: string, depth: number} {
+  const prefix = line.match(/^((?:>\s*)*)/)?.[1] ?? '';
+  return {
+    content: line.slice(prefix.length),
+    depth: prefix.match(/>/g)?.length ?? 0,
+  };
+}
+
+function tableStartQuoteDepth(lines: string[], codeFenceMask: boolean[], mathBlockMask: boolean[], index: number): number | null {
+  if (!(index + 1 < lines.length &&
     !codeFenceMask[index] &&
     !codeFenceMask[index + 1] &&
     !mathBlockMask[index] &&
-    lines[index].includes('|') &&
-    hasUnescapedPipe(lines[index]) &&
-    isTableDelimiter(lines[index + 1]);
+    !mathBlockMask[index + 1])) {
+    return null;
+  }
+
+  const header = splitBlockquoteLine(lines[index]);
+  const delimiter = splitBlockquoteLine(lines[index + 1]);
+  return header.depth === delimiter.depth &&
+    header.content.includes('|') &&
+    hasUnescapedPipe(header.content) &&
+    isTableDelimiter(delimiter.content) ? header.depth : null;
 }
 
 function scanTableSpans(lines: string[], codeFenceMask: boolean[], mathBlockMask: boolean[]): PersonalFormatterSpan[] {
   const spans: PersonalFormatterSpan[] = [];
 
   for (let i = 0; i < lines.length; i++) {
-    if (!isTableStart(lines, codeFenceMask, mathBlockMask, i)) {
+    const blockquoteDepth = tableStartQuoteDepth(lines, codeFenceMask, mathBlockMask, i);
+    if (blockquoteDepth === null) {
       continue;
     }
 
     const start = i;
     i += 2;
-    while (i < lines.length && !codeFenceMask[i] && lines[i].includes('|') && hasUnescapedPipe(lines[i]) && lines[i].trim() !== '') {
+    while (i < lines.length && !codeFenceMask[i]) {
+      const row = splitBlockquoteLine(lines[i]);
+      if (row.depth !== blockquoteDepth || !row.content.includes('|') || !hasUnescapedPipe(row.content) || row.content.trim() === '') {
+        break;
+      }
       i++;
     }
 
-    spans.push({kind: 'table', start, end: i - 1});
+    spans.push({kind: 'table', start, end: i - 1, meta: {blockquoteDepth}});
     i--;
   }
 
@@ -245,7 +265,13 @@ export function scanPersonalFormatterLines(lines: string[], context: FormatConte
 }
 
 export function findBlockStartingAt(scanResult: PersonalFormatterScanResult, index: number): PersonalFormatterSpan | null {
-  return scanResult.spans.find((span) => (span.kind === 'callout' || span.kind === 'table') && span.start === index) ?? null;
+  return scanResult.spans.find((span) => {
+    if (span.start !== index) {
+      return false;
+    }
+
+    return span.kind === 'callout' || (span.kind === 'table' && span.meta?.blockquoteDepth === 0);
+  }) ?? null;
 }
 
 export function scanSpanMask(scanResult: PersonalFormatterScanResult, kinds: PersonalFormatterSpan['kind'][]): boolean[] {

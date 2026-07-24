@@ -118,6 +118,25 @@ describe('personal formatter scanner', () => {
     expect(findBlockStartingAt(scanResult, 5)).toBeNull();
   });
 
+  it('detects a quoted table inside a callout and records its quote depth', () => {
+    const text = dedent`
+      > [!eg] Cache state
+      > Access order
+      > | Access | H/M | State |
+      > |--------|-----|-------|
+      > | 1      | M   | 1     |
+    `;
+    const scanResult = scanPersonalFormatterLines(linesOf(text), createFormatContext());
+
+    expect(scanResult.spans.filter((span) => span.kind === 'callout')).toEqual([
+      {kind: 'callout', start: 0, end: 4},
+    ]);
+    expect(scanResult.spans.filter((span) => span.kind === 'table')).toEqual([
+      {kind: 'table', start: 2, end: 4, meta: {blockquoteDepth: 1}},
+    ]);
+    expect(findBlockStartingAt(scanResult, 2)).toBeNull();
+  });
+
   it('does not scan callouts or tables inside math blocks', () => {
     const text = dedent`
       $$
